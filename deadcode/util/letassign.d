@@ -117,7 +117,7 @@ unittest { //with range
 
 unittest { //into
     version(chatty) tuple(99, "bottles").into( (int n, string s) => writeln(n, " ", s) );
-    int x = getTuple(10).into( (int n, string s) => n + s.length );
-    assert(x==17);
+    auto x = getTuple(10).into( (int n, string s) => n + s.length );
+    assert(x == 17);
     version(chatty) writeln("into ok");
 }
