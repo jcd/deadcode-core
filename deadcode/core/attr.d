@@ -13,8 +13,13 @@ enum isClass(alias T) = is(T == class);
 enum isMethod(alias T) = isSomeFunction!T;
 enum isMethod(T) = false;
 enum isPublic(alias T) = T == "public";
-enum isAnyPublic(alias T) = anySatisfy!(isPublic, __traits(getProtection, T));
-
+template isAnyPublic(alias T)
+{
+    static if (__traits(compiles, __traits(getProtection, T)))
+        enum isAnyPublic = anySatisfy!(isPublic, __traits(getProtection, T));
+    else
+        enum isAnyPublic = false;
+}
 
 /** Compile time check if a type equals another type
 

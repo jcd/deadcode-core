@@ -141,12 +141,20 @@ class FutureTmpl(T, bool Progress = false) : IFuture
                 // Promise already fulfilled -> just call the delegate immediately
                 if (_state._ex is null)
                 {
-                    U u = dlg(_state._result);
-                    p.setValue(u);
+                    try
+                    {
+                        U u = dlg(_state._result);
+                        p.setValue(u);
+                    }
+                    catch (Exception e)
+                    {
+                        p.setException(e);
+                    }
                 }
                 else
                 {
-                    throw _state._ex;
+                    // Propagate the exception
+                    p.setException(_state._ex);
                 }
             }
             else
@@ -155,8 +163,15 @@ class FutureTmpl(T, bool Progress = false) : IFuture
                 _state._then = () {
                     if (_state._ex is null)
                     {
-                        U u = dlg(_state._result);
-                        p.setValue(u);
+                        try
+                        {
+                            U u = dlg(_state._result);
+                            p.setValue(u);
+                        }
+                        catch (Exception e)
+                        {
+                            p.setException(e);
+                        }
                     }
                     else
                     {
@@ -181,12 +196,20 @@ class FutureTmpl(T, bool Progress = false) : IFuture
                 // Promise already fulfilled -> just call the delegate immediately
                 if (_state._ex is null)
                 {
-                    dlg(_state._result);
-                    p.setValue(VoidState());
+                    try
+                    {
+                        dlg(_state._result);
+                        p.setValue(VoidState());
+                    }
+                    catch (Exception e)
+                    {
+                        p.setException(e);
+                    }
                 }
                 else
                 {
-                    throw _state._ex;
+                    // Propagate the exception
+                    p.setException(_state._ex);
                 }
             }
             else
@@ -195,8 +218,15 @@ class FutureTmpl(T, bool Progress = false) : IFuture
                 _state._then = () {
                     if (_state._ex is null)
                     {
-                        dlg(_state._result);
-                        p.setValue(VoidState());
+                        try
+                        {
+                            dlg(_state._result);
+                            p.setValue(VoidState());
+                        }
+                        catch (Exception e)
+                        {
+                            p.setException(e);
+                        }
                     }
                     else
                     {

@@ -22,12 +22,13 @@ auto uniquePostfixPath(R)(R names)
     }
     int idx = 0;
 
-static string[] myreverse(string[] arr)
-{
-	arr.reverse();
-return arr;
-}
+    static string[] myreverse(string[] arr)
+    {
+	    arr.reverse();
+    return arr;
+    }
 
+    /*
     version (unittest)
     {
         version (linux)
@@ -44,7 +45,9 @@ return arr;
     {
         auto ns = names;
     }
-
+    */
+    auto ns = names.map!(a => a.replace("\\", "/"));
+    
     auto r = ns
      .map!((a) => SortHelper(idx++, a, myreverse(a.pathSplitter.array))).array
      .sort!"a.reversePathElements < b.reversePathElements"().array;
@@ -89,36 +92,36 @@ unittest
     a = [ "b", "a", "b"];
     Assert(uniquePostfixPath(a).toarr, a, "One level uniquePostfixPath");
 
-    a = [ "b", "a", "foo\\a" ];
+    a = [ "b", "a", "foo/a" ];
     Assert(uniquePostfixPath(a).toarr, a, "One conflict uniquePostfixPath");
 
-    a = [ "b", "foo\\a", "bar\\a"];
+    a = [ "b", "foo/a", "bar/a"];
     Assert(uniquePostfixPath(a).toarr, a, "One two conflicts uniquePostfixPath");
 
-    a = [ "b", "a", "foo\\a", "bar\\a"];
+    a = [ "b", "a", "foo/a", "bar/a"];
     Assert(uniquePostfixPath(a).toarr, a, "One two conflicts uniquePostfixPath");
 
-    a = [ "b", "foo\\a", "bar\\a", "a"];
+    a = [ "b", "foo/a", "bar/a", "a"];
     Assert(uniquePostfixPath(a).toarr, a, "One two conflicts reverse uniquePostfixPath");
 
-    a = [ "b", "foo\\a", "bar\\goo\\a", "a"];
-    Assert(uniquePostfixPath(a).toarr, [ "b", "foo\\a", "goo\\a", "a"], "One three conflicts reverse uniquePostfixPath");
+    a = [ "b", "foo/a", "bar/goo/a", "a"];
+    Assert(uniquePostfixPath(a).toarr, [ "b", "foo/a", "goo/a", "a"], "One three conflicts reverse uniquePostfixPath");
 
     // With prefix
-    a = [ "prefix\\b", "prefix\\a", "prefix\\b"];
-    Assert(uniquePostfixPath(a).toarr, [ "prefix\\b", "a", "prefix\\b"], "One level uniquePostfixPath");
+    a = [ "prefix/b", "prefix/a", "prefix/b"];
+    Assert(uniquePostfixPath(a).toarr, [ "prefix/b", "a", "prefix/b"], "One level uniquePostfixPath");
 
-    a = [ "prefix\\b", "prefix\\a", "prefix\\foo\\a" ];
-    Assert(uniquePostfixPath(a).toarr, [ "b", "prefix\\a", "foo\\a" ], "One conflict uniquePostfixPath");
+    a = [ "prefix/b", "prefix/a", "prefix/foo/a" ];
+    Assert(uniquePostfixPath(a).toarr, [ "b", "prefix/a", "foo/a" ], "One conflict uniquePostfixPath");
 
-    a = [ "prefix\\b", "prefix\\a", "prefix\\foo\\a", "prefix\\bar\\a"];
-    Assert(uniquePostfixPath(a).toarr, [ "b", "prefix\\a", "foo\\a", "bar\\a"], "One two conflicts uniquePostfixPath");
+    a = [ "prefix/b", "prefix/a", "prefix/foo/a", "prefix/bar/a"];
+    Assert(uniquePostfixPath(a).toarr, [ "b", "prefix/a", "foo/a", "bar/a"], "One two conflicts uniquePostfixPath");
 
-    a = [ "prefix\\b", "prefix\\foo\\a", "prefix\\bar\\a", "prefix\\a"];
-    Assert(uniquePostfixPath(a).toarr, [ "b", "foo\\a", "bar\\a", "prefix\\a"], "One two conflicts reverse uniquePostfixPath");
+    a = [ "prefix/b", "prefix/foo/a", "prefix/bar/a", "prefix/a"];
+    Assert(uniquePostfixPath(a).toarr, [ "b", "foo/a", "bar/a", "prefix/a"], "One two conflicts reverse uniquePostfixPath");
 
-    a = [ "prefix\\b", "prefix\\foo\\a", "prefix\\bar\\goo\\a", "prefix\\a"];
-    Assert(uniquePostfixPath(a).toarr, [ "b", "foo\\a", "goo\\a", "prefix\\a"], "One three conflicts reverse uniquePostfixPath");
+    a = [ "prefix/b", "prefix/foo/a", "prefix/bar/goo/a", "prefix/a"];
+    Assert(uniquePostfixPath(a).toarr, [ "b", "foo/a", "goo/a", "prefix/a"], "One three conflicts reverse uniquePostfixPath");
     //printStats(true);
 }
 
@@ -248,19 +251,25 @@ double rank( string a, string b, double fuzziness = 0.0 )
 
 unittest
 {
-	import deadcode.core.log;
-	void t(string a, string b, double expected = -1)
+
+	void t(string a, string b, double expected = -1, double fuzziness = 0.0, string file = __FILE__, int line = __LINE__, string func = __FUNCTION__)
 	{
+        import std.math : approxEqual;
 		import std.stdio;
 		auto r = a.rank(b);
-		log.i(a, " <=> ", b, " is ", r);
-
-		if (expected == -1)
-			return;
+		
+        // Assert(expected, a.rank(b, fuzziness), "Raking " ~ a ~ " vs. " ~ b, file, line, func);
+        Assert(approxEqual(expected, a.rank(b, fuzziness)), "Ranking " ~ a ~ " vs. " ~ b, file, line, func);
 	}
 
-	t("ResourceProviderFactory", "ResourceProviderFactory");
-	t("ResourceProviderFactory", "res");
-	t("ResourceProviderFactory", "rpf");
-	t("ResourceProviderFactory", "RPF");
+	t("ResourceProviderFactory", "ResourceProviderFactory", 1);
+	t("ResourceProviderFactory", "res", 0.533333);
+	t("ResourceProviderFactory", "rpf", 0.269565);
+	t("ResourceProviderFactory", "RPF", 0.326087);
+	t("ResourceProviderFactory", "", 0.0);
+	t("ResourceProviderFactory", "Q", 0.0);
+	t("ResourceProviderFactory", "Q", 0.0, 0.1);
+	t(" R", "r", 0.675);
+	t(".Xr", ".r", 0.558333);
+
 }

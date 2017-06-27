@@ -84,6 +84,7 @@ class Log : ILog
     mixin Signal!(string, LogLevel) onInfo;
     mixin Signal!(string, LogLevel) onWarning;
     mixin Signal!(string, LogLevel) onError;
+    mixin Signal!(string, LogLevel) onAllMessages;
 
     this(string path)
     {
@@ -101,7 +102,7 @@ class Log : ILog
 
     void log(LogLevel level, string message)
     {
-        if (_file.getFP() !is null)
+        if (_file.isOpen)
         {
             _file.writeln(message);
             _file.flush();
@@ -122,5 +123,6 @@ class Log : ILog
                 onError.emit(message, error);
                 break;
         }
+        onAllMessages.emit(message, level);
 	}
 }

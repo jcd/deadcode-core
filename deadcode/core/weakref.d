@@ -9,7 +9,7 @@ private alias void delegate (Object) DEvent;
 private extern (C) void rt_attachDisposeEvent (Object h, DEvent e);
 private extern (C) void rt_detachDisposeEvent (Object h, DEvent e);
 
-final class Weak(T : Object) {
+final class WeakRef(T) if(is(T == class) || is(T == interface)) {
 	// Note: This class uses a clever trick which works fine for
 	// a conservative GC that was never intended to do
 	// compaction/copying in the first place. However, if compaction is
@@ -22,7 +22,7 @@ final class Weak(T : Object) {
 	private size_t mHash;
 
 	this (T obj=null) @trusted {
-		hook(obj);
+		hook(cast(Object)obj);
 	}
 
 	@property T object () const @trusted nothrow {
@@ -36,8 +36,13 @@ final class Weak(T : Object) {
 		return null;
 	}
 
-	@property void object (T obj) @trusted {
-		auto oobj = cast(T)cast(void*)(atomicLoad(*cast(shared)&mObject)^0xa5a5a5a5u);
+    T get() const @trusted nothrow {
+        return object;
+    }
+
+	@property void object (T obj_) @trusted {
+		auto obj = cast(Object) obj_;
+        auto oobj = cast(T)cast(void*)(atomicLoad(*cast(shared)&mObject)^0xa5a5a5a5u);
 		if (oobj !is null && GC.addrOf(cast(void*)oobj)) unhook(oobj);
 		oobj = null;
 		hook(obj);
@@ -79,12 +84,12 @@ final class Weak(T : Object) {
 
 	override bool opEquals (Object o) @trusted nothrow {
 		if (this is o) return true;
-		if (auto weak = cast(Weak!T)o) return (mPtr == weak.mPtr);
+		if (auto weak = cast(WeakRef!T)o) return (mPtr == weak.mPtr);
 		return false;
 	}
 
 	override int opCmp (Object o) @trusted nothrow {
-		if (auto weak = cast(Weak!T)o) return (mPtr > weak.mPtr ? 1 : mPtr < weak.mPtr ? -1 : 0);
+		if (auto weak = cast(WeakRef!T)o) return (mPtr > weak.mPtr ? 1 : mPtr < weak.mPtr ? -1 : 0);
 		return 1;
 	}
 

@@ -95,8 +95,6 @@ private struct EditorConfigPaths
 
     @property bool empty() const
     {
-        import std.stdio;
-        writeln(_currentDir, " ", _rootName);
         return _currentDir == _rootName;
     }
 }
@@ -230,9 +228,8 @@ private struct EditorConfigResolver
     this(string iniFilePath)
     {
         import std.file;
+        import std.string;
         import deadcode.core.path;
-
-        import std.file;
         import deadcode.util.ini;
 
         iniBaseDir = dirName(iniFilePath);
@@ -241,8 +238,6 @@ private struct EditorConfigResolver
 
         foreach(item; parseINI(data))
         {
-            import std.stdio;
-            writeln(item);
             auto idx = item.section in index;
             if (idx is null)
             {
@@ -519,10 +514,4 @@ unittest
 
 
     static assert(globMatchEditorConfig("foo.bar", "[!gh]*bar"));
-
-    import std.stdio;
-
-    writeln(editorConfigForPath(r"C:\Projects\D\ded\libdeadcode\src\util\editorconfig.d"));
 }
-
-

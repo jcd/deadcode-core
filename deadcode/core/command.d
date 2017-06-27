@@ -19,7 +19,8 @@ struct CompletionEntry
 CompletionEntry[] toCompletionEntries(string[] strs)
 {
 	import std.algorithm;
-	return std.array.array(strs.map!(a => CompletionEntry(a,a))());
+    import std.array;
+	return array(strs.map!(a => CompletionEntry(a,a))());
 }
 
 enum Hints : ubyte
@@ -29,9 +30,6 @@ enum Hints : ubyte
 	description =  2,
 	all = ubyte.max,
 }
-
-//import extensionapi.rpc;
-//mixin registerRPC;
 
 interface ICommand
 {
@@ -52,6 +50,8 @@ interface ICommand
     int getCompletionSessionID();
     bool beginCompletionSession(int sessionID);
     void endCompletionSession();
+    CompletionEntry[] getCompletions(string input);
+    CompletionEntry[] getCompletions(CommandParameter[] data);
 }
 
 class Command : ICommand
@@ -123,7 +123,33 @@ class Command : ICommand
 
         string description() const
         {
-            return name;
+            if (_commandParamtersTemplate is null)
+                return null;
+
+            string res;
+            foreach (i; 0.._commandParamtersTemplate.length)
+            {
+                res ~= _commandParamtersTemplate[i].name;
+                res ~= "(";
+                auto d = _commandParamtersTemplate[i].description;
+                if (d.length != 0)
+                {
+                    res ~= d;
+                    res ~= " ";
+                }
+                if (_commandParamtersTemplate[i].isNull)
+                {
+                    res ~= "mandatory";
+                }
+                else
+                {
+                    res ~= "default: ";
+                    auto p = _commandParamtersTemplate[i].parameter;
+                    res ~= (cast(CommandParameter)p).toString();
+                }
+                res ~= ")";
+            }
+            return res;
         }
 
         //string shortcut() const
@@ -288,6 +314,7 @@ auto helloCommand()
 interface ICommandManager
 {    
     void add(ICommand command);
+	ICommand lookup(string commandName);
     void execute(string commandName, CommandParameter[] params);
 	void execute(T)(string cmd, T arg1)
 	{
@@ -358,6 +385,20 @@ class CommandManager : ICommandManager
 
 	/** Remove a command
 	 */
+	void remove(ICommand cmd)
+	{
+        foreach (k, v; commands)
+        {
+            if (v is cmd)
+            {
+                commands.remove(k);
+                break;
+            }
+        }
+
+	}
+
+    /// ditto
 	void remove(string commandName)
 	{
 		commands.remove(commandName);

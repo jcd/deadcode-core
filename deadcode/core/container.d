@@ -1,7 +1,6 @@
 module deadcode.core.container;
 
 import deadcode.test;
-mixin registerUnittests;
 
 class Stack(T)
 {
@@ -12,6 +11,11 @@ class Stack(T)
 		assumeSafeAppend(_stack);
 		_stack ~= v;
 	}
+
+    @property size_t size() const pure nothrow @safe
+    {
+        return _stack.length;
+    }
 
 	@property bool empty() const pure nothrow @safe
 	{
@@ -32,8 +36,9 @@ class Stack(T)
 			{
 				assumeSafeAppend(_stack);
 				if (i != _stack.length - 1)
-					_stack[i..$-1] = _stack[i+1..$];
+					moveAll(_stack[i+1..$], _stack[i..$-1]);
 				_stack.length = _stack.length - 1;
+                assumeSafeAppend(_stack);
 				return true;
 			}
 		}
@@ -47,8 +52,21 @@ class Stack(T)
 		s.push(2);
 		s.push(3);
 		s.remove(2);
-		assert(s.pop() == 3);
-		assert(s.pop() == 1);
+        auto l1 = s.size;
+        s.remove(32);
+        Assert(l1, s.size, "Removing non-existing element doens't change stack size");
+		Assert(3, s.top);
+        Assert(3, s.pop());
+		Assert(1, s.pop());
+
+        s.push(2);
+		s.push(3);
+        s.push(2);
+        s.push(2);
+		s.push(3);
+        auto l2 = s.size;
+        s.removeAll(2);
+        Assert(l2 - 3, s.size, "Removing all 2's changes stack size as expected");
 	}
 
 	// Locate item in stack and remove it from stack even if there multiple times
@@ -74,18 +92,18 @@ unittest
 	s.push(1);
 	s.push(2);
 	s.push(3);
-	assert(s.pop() == 3);
-	assert(s.pop() == 2);
-	assert(s.pop() == 1);
-	assert(s.empty);
+	Assert(3, s.pop());
+	Assert(2, s.pop());
+	Assert(1, s.pop());
+	Assert(s.empty);
 
 	s.push(1);
 	s.push(2);
 	Stack!int s2 = s;
 
-	assert(s2.pop() == 2);
+	Assert(2, s2.pop());
 	s2.push(4);
-	assert(s.pop() == 4);
+	Assert(4, s.pop());
 }
 
 
@@ -218,27 +236,41 @@ version (unittest)
 {
 	import std.stdio;
 	import std.algorithm;
-	void chk(T)(T q, size_t b, size_t e)
+	void chk(T)(T q, size_t b, size_t e, string file = __FILE__, int line = __LINE__, string func = __FUNCTION__)
 	{
 		version (verboseunittest)
 			writeln(q._queue.capacity, " ", q._queue.length, " ", q._begin, " ", q._end);
-		assert(q._begin == b);
-		assert(q._end == e);		
+		Assert(q._begin, b, "", file, line, func);
+		Assert(q._end, e, "", file, line, func);		
 	}
 
-	void chk(T)(T q, size_t cap, size_t len, size_t b, size_t e)
+	void chk(T)(T q, size_t cap, size_t len, size_t b, size_t e, string file = __FILE__, int line = __LINE__, string func = __FUNCTION__)
 	{
 		version (verboseunittest)
 			writeln(q._queue.capacity, " ", q._queue.length, " ", q._begin, " ", q._end);
-		assert(q._queue.capacity == cap);
-		assert(q._queue.length == len);
-		assert(q._begin == b);
-		assert(q._end == e);		
+		Assert(q._queue.capacity, cap, "", file, line, func);
+		Assert(q._queue.length, len, "", file, line, func);
+		Assert(q._begin, b, "", file, line, func);
+		Assert(q._end, e, "", file, line, func);		
 	}
 }
 
 struct T { string n; }
 
+unittest
+{
+	Queue!int s = new Queue!int(0);
+    auto cap = s._queue.capacity; 
+    Assert(cap != 0, "Queue capacity is never zero");
+    
+    foreach (i; 0 .. cap+1)
+        s.enqueueIfRoom(1);
+    
+    Assert(cap, s._queue.capacity, "Queue.enqueueIfRoom will not change capacity");
+    s.dequeue();
+    s.enqueueIfRoom(1);
+    Assert(cap, s._queue.capacity, "Queue.enqueueIfRoom after queue buffer wrap will not change capacity");
+}
 
 @T("queue and dequeue until empty")
 unittest
@@ -249,10 +281,10 @@ unittest
 	Queue!int s = new Queue!int(2);
 	s.enqueue(1);
 	s.enqueue(2);
-	assert(s.dequeue() == 1);
-	assert(s.dequeue() == 2);
+	Assert(1, s.dequeue());
+	Assert(2, s.dequeue());
 	s.chk(2,2);
-	assert(equal(s, [1][0..0]));
+	Assert(equal(s, [1][0..0]));
 }
 
 @T("will resize when exceeding buffer length")
@@ -267,7 +299,7 @@ unittest
 	s.enqueue(2);
 	s.enqueue(3);
 	s.chk(7,7,0,3);
-	assert(equal(s, [1,2,3]));
+	Assert(equal(s, [1,2,3]));
 }
 
 @T("head will wrap")
@@ -279,10 +311,10 @@ unittest
 	Queue!int s = new Queue!int(2);
 	s.enqueue(1);
 	s.enqueue(2);
-	assert(s.dequeue() == 1);
+	Assert(1, s.dequeue());
 	s.enqueue(3);
 	s.chk(1,0);
-	assert(equal(s, [2,3]));
+	Assert(equal(s, [2,3]));
 }
 
 @T("will resize when exceeding buffer size in the middle")
@@ -294,11 +326,11 @@ unittest
 	Queue!int s = new Queue!int(2);
 	s.enqueue(1);
 	s.enqueue(2);
-	assert(s.dequeue() == 1);
+	Assert(1, s.dequeue());
 	s.enqueue(3);
 	s.enqueue(4);
 	s.chk(7,7,5,1);
-	assert(equal(s, [2,3,4]));
+	Assert(equal(s, [2,3,4]));
 }
 
 @T("tail will wrap")
@@ -310,11 +342,11 @@ unittest
 	Queue!int s = new Queue!int(2);
 	s.enqueue(1);
 	s.enqueue(2);
-	assert(s.dequeue() == 1);
-	assert(s.dequeue() == 2);
+    Assert(1, s.dequeue());
+	Assert(2, s.dequeue());
 	s.enqueue(3);
 	s.enqueue(4);
-	assert(s.dequeue() == 3);
+	Assert(3, s.dequeue());
 	s.chk(3,3,0,1);
-	assert(equal(s, [4]));
+	Assert(equal(s, [4]));
 }

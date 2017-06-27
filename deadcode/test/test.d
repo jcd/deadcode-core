@@ -4,6 +4,14 @@ import std.stdio;
 import std.string;
 import std.conv;
 
+// UDA to name unittest blocks
+struct Test
+{
+    string contextDescription;
+    string actionDescription;
+    string expectedOutcomeDescription;
+}
+
 struct UnitTestInfo
 {
 	string fullName; // including nested classes etc.
@@ -29,6 +37,7 @@ static
 	alias void function() UnitTestFunc;
 	UnitTestFunc[string] g_ModuleUnitTests;
 	UnitTestInfo[] g_TestOrder;
+    bool g_RecordingOn = true;
 }
 
 UnitTestInfo parseUnitTestName(string func)
@@ -54,11 +63,14 @@ UnitTestInfo parseUnitTestName(string func)
 
 void recordTestResult(bool success, string assertion, string msg, string file, int line, string func)
 {
-	g_Total++;
 	import std.stdio;
 	auto info = parseUnitTestName(func);
-	g_TestRecords ~= TestRecord( success, assertion, msg, file, line, info);
-	version (TestingByDeadcode)
+	if (g_RecordingOn)
+    {
+    	g_Total++;
+        g_TestRecords ~= TestRecord( success, assertion, msg, file, line, info);
+	}
+    version (TestingByDeadcode)
     {
 		static import core.exception;
         import std.range;
@@ -67,22 +79,29 @@ void recordTestResult(bool success, string assertion, string msg, string file, i
     }
 }
 
-version (unittest) version (TestingByTool)
+version (TestingByTool)
 {
 	import std.datetime;
 	StopWatch sw;
-	shared static this()
+    
+    shared static this()
 	{
 		sw.start();
 	}
 	shared static ~this()
 	{
-		sw.stop();
 		import std.stdio;
-		printStats(stdout,  true);
-		writeln("Time: ", sw.peek().to!("seconds", real)(), " seconds.");
+        printAllStats(stdout, sw);
 	}
+
+    void printAllStats(T)(T sink, ref StopWatch w)
+    {
+		sw.stop();
+		printStats(sink,  true);
+		sink.writeln("Time: " ~ sw.peek().to!("seconds", real).to!string ~ " seconds.");        
+    }
 }
+
 
 TestRecord getTestResult(string filename, int unittestStartLine)
 {
@@ -95,7 +114,14 @@ TestRecord getTestResult(string filename, int unittestStartLine)
 	return TestRecord();
 }
 
-bool printStats(File output, bool includeSuccessful = false)
+unittest
+{
+    auto r = g_TestRecords[0];
+    Assert(TestRecord(), getTestResult("<non-existing-file>", -1));
+    Assert(r, getTestResult(r.file, r.testInfo.testScopeStartsAtLine));
+}
+
+bool printStats(F)(F output, bool includeSuccessful = false)
 {
 	import std.algorithm;
     bool hasFailing = false;
@@ -124,15 +150,47 @@ bool printStats(File output, bool includeSuccessful = false)
 		output.writefln("Warning: application not compiled with unittests enabled");
     }
 	auto c = g_TestRecords.count!"a.success";
-	output.writefln("%s of %s OK", c, g_Total);
+	output.writefln("Test results: %s of %s OK", c, g_Total);
     return c == g_Total;
+}
+
+unittest
+{
+    struct MockSink
+    {
+        void writeln(string) {}
+        void writefln(A...)(A) {}
+    }
+    printStats(MockSink(), false);
+    {
+        import std.array;
+        Assert(1,0); // register failed test
+        printStats(MockSink(), true);
+        g_TestRecords = g_TestRecords[0..$-1]; // remove failed test
+        g_Total--;
+        assumeSafeAppend(g_TestRecords);
+    }
+
+    version (TestingByTool)
+    {
+        StopWatch dummyStopWatch;
+        printAllStats(MockSink(), dummyStopWatch);
+    }
 }
 
 void Assert(lazy bool expMustBeTrue, string msg = "", string file = __FILE__, int line = __LINE__, string func = __FUNCTION__)
 {
-	bool res = expMustBeTrue();
+	bool res = false;
+	try
+	{
+		res = expMustBeTrue();
+		// writeln("Test ", file, "@", line, " ", msg, ": ", res ? "OK" : "FAILED");
+	}
+	catch (Exception e)
+	{
+		msg ~= text(" (Caught exception ", e, ")");
+	}
 	recordTestResult(res, "", msg, file, line, func);
-	// writeln("Test ", file, "@", line, " ", msg, ": ", res ? "OK" : "FAILED");
 }
 
 
@@ -199,7 +257,7 @@ mixin template registerUnittests()
 			            //enum name = __traits(identifier, test)[11..$];
 			            //enum linen = name[0.. indexOf(name, "_")];
 			            //import std.stdio;
-                        writeln("Aggregate Unittest: ", __traits(identifier, __traits(parent,__traits(parent, a))), " ", __traits(identifier, tst));
+                        // writeln("Aggregate Unittest: ", __traits(identifier, __traits(parent,__traits(parent, a))), " ", __traits(identifier, tst));
 
 			            //if (textAnchor.number+1 == linen.to!uint)
 			            //{
@@ -227,11 +285,43 @@ mixin template registerUnittests()
 
 void Assert(T, V)(lazy T thisExp, lazy V isEqualToThisExp, string msg = "", string file = __FILE__, int line = __LINE__, string func = __FUNCTION__)
 {
-	auto a = thisExp();
-	auto b = isEqualToThisExp();
-	bool res = a == b;
+	bool res = false;
+	string explanation = "a == b";
+	try
+	{
+		auto a = thisExp();
+		auto b = isEqualToThisExp();
+		res = a == b;
+		explanation = text(a, " == ", b);	
+	}
+	catch (Exception e)
+	{
+		msg ~= text(" (Caught exception ", e, ")");
+	}
 
-	recordTestResult(res, text(a, " == ", b), msg ~ " " ~ func, file, line, func);
+	recordTestResult(res, explanation, msg, file, line, func);
+	// writeln("Test ", file, "@", line, " ", msg, ": ", a, " == ", b, " ", res ? "OK" : "FAILED");
+}
+
+void AssertContains(T, V)(lazy T thisRange, lazy V containsThisElementOrRange, string msg = "", string file = __FILE__, int line = __LINE__, string func = __FUNCTION__)
+{
+	import std.algorithm;
+    import std.range;
+	bool res = false;
+	string explanation = "a contains b";
+	try
+	{
+	    auto a = thisRange();
+		auto b = containsThisElementOrRange();
+		res = !find(thisRange, containsThisElementOrRange).empty;
+		explanation = text(a, " contains ", b);
+	}
+	catch (Exception e)
+	{
+		msg ~= text(" (Caught exception ", e, ")");
+	}
+
+	recordTestResult(res, explanation, msg, file, line, func);
 	// writeln("Test ", file, "@", line, " ", msg, ": ", a, " == ", b, " ", res ? "OK" : "FAILED");
 }
 
@@ -239,61 +329,93 @@ void AssertRangesEqual(T, V)(lazy T thisExp, lazy V isEqualToThisExp, string msg
 {
 	import std.range;
 	import std.array;
-	auto r1 = thisExp();
-	auto r2 = isEqualToThisExp();
-
-	static if (__traits(compiles, r1.length == r2.length))
-	{
-		if (r1.length != r2.length)
-		{
-			recordTestResult(false, text("length of ", r1, " == length of ", r2), msg ~ " " ~ func, file, line, func);
-			return;
-		}
-	}
-
-    int count = 0;
-    auto app1 = appender!string;
-	app1.put("[");
-    auto app2 = appender!string;
-	app2.put("[");
+	bool res = false;
 	string testMsg = null;
-	while (!r1.empty || !r2.empty)
-    {
-		if (testMsg is null && (r1.empty || r2.empty))
+	auto app1 = appender!string;
+	try
+	{
+		auto r1 = thisExp();
+		auto r2 = isEqualToThisExp();
+
+		static if (__traits(compiles, r1.length == r2.length))
 		{
-			if (testMsg !is null)
-				testMsg = text("length of ", r1, " == length of ", r2, ". ");
+			if (r1.length != r2.length)
+			{
+				recordTestResult(false, text("length of ", r1, " == length of ", r2), msg ~ " " ~ func, file, line, func);
+				return;
+			}
 		}
 
-		if (testMsg is null && !r1.empty && !r2.empty && r1.front != r2.front)
-		{
-			testMsg = text("ranges differs at index ", count, ". ");
-		}
+	    int count = 0;
+	    
+		app1.put("[");
+	    auto app2 = appender!string;
+		app2.put("[");
+		
+		while (!r1.empty || !r2.empty)
+	    {
+			if (testMsg is null)
+	        {
+	            if (r1.empty || r2.empty)
+				    testMsg = text("length of ", r1, " != length of ", r2, ". ");
+			    else if (r1.front != r2.front)
+	    			testMsg = text("ranges differs at index ", count, ". ");
+			}
 
-		if (!r1.empty)
-		{
-			if (count != 0)
-				app1.put(", ");
-			app1.put(r1.front.to!string);
-			r1.popFront();
-        }
+			if (!r1.empty)
+			{
+				if (count != 0)
+					app1.put(", ");
+				app1.put(r1.front.to!string);
+				r1.popFront();
+	        }
 
-		if (!r2.empty)
-		{
-			if (count != 0)
-				app2.put(", ");
-			app2.put(r2.front.to!string);
-			r2.popFront();
-		}
-		count++;
-    }
-	app1.put("]");
-	app2.put("]");
+			if (!r2.empty)
+			{
+				if (count != 0)
+					app2.put(", ");
+				app2.put(r2.front.to!string);
+				r2.popFront();
+			}
+			count++;
+	    }
+		app1.put("]");
+		app2.put("]");
 
-	app1.put(" == ");
-	app1.put(app2.data);
+		app1.put(" == ");
+		app1.put(app2.data);
+	}
+	catch (Exception e)
+	{
+		msg ~= text(" (Caught exception ", e, ")");
+	}
 	recordTestResult(testMsg is null, testMsg ~ app1.data, msg ~ " " ~ func, file, line, func);
 }
+
+unittest
+{
+    struct MyInputRange
+    {
+        uint[] x;
+        int index;
+
+        @property uint front() { return x[index]; }
+        @property bool empty() const { return index == x.length; }
+        void popFront() { index++; }
+    }
+    
+    g_RecordingOn = false;
+    scope (exit) g_RecordingOn = true;
+
+    auto r1 = MyInputRange([1]);
+    auto r2 = MyInputRange([]);
+    AssertRangesEqual(r1, r2);
+
+    auto r3 = MyInputRange([1,2]);
+    auto r4 = MyInputRange([1,3]);
+    AssertRangesEqual(r3, r4);
+}
+
 
 immutable string ANSI_RED = "\x1b[31m";
 immutable string ANSI_GREEN = "\x1b[32m";
@@ -302,20 +424,40 @@ immutable string ANSI_RESET = "\x1b[0m";
 
 void AssertIs(T,V)(lazy T thisExp, lazy V isEqualToThisExp, string msg = "", string file = __FILE__, int line = __LINE__, string func = __FUNCTION__)
 {
-	auto a = thisExp();
-	auto b = isEqualToThisExp();
-	bool res = a is b;
-	recordTestResult(res, text(a, " is ", b), msg, file, line, func);
+	bool res = false;
+	string explanation = "a is b";
+	try
+	{
+		auto a = thisExp();
+		auto b = isEqualToThisExp();
+		res = a is b;
+		explanation = text(a, " is ", b);
+	}
+	catch (Exception e)
+	{
+		msg ~= text(" (Caught exception ", e, ")");
+	}		
+	recordTestResult(res, explanation, msg, file, line, func);
 	//	writeln("Test ", file, "@", line, " ", msg, ": ", a, " is ", b, " ", res ? ANSI_GREEN ~ "OK" ~ ANSI_RESET : ANSI_RED ~ "FAILED" ~ ANSI_RESET);
 	// writeln("Test ", file, "@", line, " ", msg, ": ", a, " is ", b, " ", res ? "OK" : "FAILED");
 }
 
 void AssertIsNot(T,V)(lazy T thisExp, lazy V isEqualToThisExp, string msg = "", string file = __FILE__, int line = __LINE__, string func = __FUNCTION__)
 {
-	auto a = thisExp();
-	auto b = isEqualToThisExp();
-	bool res = a !is b;
-	recordTestResult(res, text(a, " is not ", b), msg, file, line, func);
+	bool res = false;
+	string explanation = "a is not b";
+	try
+	{
+		auto a = thisExp();
+		auto b = isEqualToThisExp();
+		res = a !is b;
+		explanation = text(a, " is not ", b);
+	}
+	catch (Exception e)
+	{
+		msg ~= text(" (Caught exception ", e, ")");
+	}		
+	recordTestResult(res, explanation, msg, file, line, func);
 	//	writeln("Test ", file, "@", line, " ", msg, ": ", a, " is ", b, " ", res ? ANSI_GREEN ~ "OK" ~ ANSI_RESET : ANSI_RED ~ "FAILED" ~ ANSI_RESET);
 	// writeln("Test ", file, "@", line, " ", msg, ": ", a, " is ", b, " ", res ? "OK" : "FAILED");
 }

@@ -15,7 +15,7 @@ struct SemanticVersion
     // Examples:
     // 1.2
     // 0.13
-    // 1.0-beta2
+    // 1.0-beta2 
     // 1.0-beta2.first
     // 1.0-2.first.42-foo.Third-9.fourth+1.2-Muh.3.Bar-22-fd89.5.6.7.8.foo
     // 1.4.2-alpha1+152345
@@ -130,17 +130,23 @@ struct SemanticVersion
         // Special case for empty preRelease
         if (preRelease.length == 0)
             return other.preRelease.length == 0 ? 0 : 1;
-        if (other.preRelease.length == 0)
-            return preRelease.length == 0 ? 0 : -1;
+        else if (other.preRelease.length == 0)
+            return -1;
 
         // Compare only prerelase. Build part is not used for precedence check.
         // Compare pre release toks numerically if possible else alphabetically.
-        // Comparing alphabetically is preferred in case both tokens cannot be converted entirely to a number.
-        foreach (idx, thisTok; preRelease)
+        // Comparing alphabetically is done in case both tokens cannot be converted entirely to a number.
+        size_t minCommonSize = preRelease.length > other.preRelease.length ? other.preRelease.length : preRelease.length;
+        
+        foreach (idx; 0..minCommonSize)
         {
+            string thisTok = preRelease[idx];
             string otherTok = other.preRelease[idx];
-            bool numCmp = thisTok.to!dstring.all!((a) => isDigit(a)) &&
-                          other.to!dstring.all!((a) => isDigit(a));
+            
+            bool thisTokIsNum = thisTok.to!dstring.all!((a) => isDigit(a));
+            bool otherTokIsNum = otherTok.to!dstring.all!((a) => isDigit(a));
+            
+            bool numCmp = thisTokIsNum && otherTokIsNum;
             if (numCmp)
             {
                 uint thisNum = thisTok.to!uint;
@@ -150,8 +156,14 @@ struct SemanticVersion
                     return -1;
                 else if (thisNum > otherNum)
                     return 1;
-                else if (idx+1 == other.preRelease.length)
-                    return other.preRelease.length == preRelease.length ? 0 : 1; // more pre release toks takes precedens
+            }
+            else if (thisTokIsNum)
+            {
+                return -1; // non-numeric is always higher precedence that numeric
+            }
+            else if (otherTokIsNum)
+            {
+                return 1; // non-numeric is always higher precedence that numeric
             }
             else
             {
@@ -159,11 +171,13 @@ struct SemanticVersion
                     return -1;
                 else if (thisTok > otherTok)
                     return 1;
-                else if (idx+1 == other.preRelease.length)
-                    return other.preRelease.length == preRelease.length ? 0 : 1; // more pre release toks takes precedens
             }
         }
-        return other.preRelease.length == preRelease.length ? 0 : -1;
+
+        if (preRelease.length == other.preRelease.length)
+            return 0;
+
+        return preRelease.length < other.preRelease.length ? -1 : 1;
     }
 
     ///
@@ -171,14 +185,36 @@ struct SemanticVersion
     {
         import std.conv;
 
-        Assert(SemanticVersion("0.1").precedence(SemanticVersion("0.1")) == 0);
-        Assert(SemanticVersion("0.1").precedence(SemanticVersion("0.2")) == -1);
-        Assert(SemanticVersion("0.2").precedence(SemanticVersion("0.1")) == 1);
-        Assert(SemanticVersion("0.2").precedence(SemanticVersion("0.1")) == 1);
-        Assert(SemanticVersion("0.1").precedence(SemanticVersion("0.1-beta")) == 1);
-        Assert(SemanticVersion("0.1-alpha").precedence(SemanticVersion("0.1-beta")) == -1, SemanticVersion("0.1-alpha").to!string ~ SemanticVersion("0.1-beta").to!string);
-        Assert(SemanticVersion("0.1-alpha+24.12").precedence(SemanticVersion("0.1-alpha")) == 0, SemanticVersion("0.1-alpha+24.12").to!string ~ SemanticVersion("0.1-alpha").to!string);
-        Assert(SemanticVersion("0.1-1.2").precedence(SemanticVersion("0.1-1")) == 1);
-        Assert(SemanticVersion("0.1-1a").precedence(SemanticVersion("0.1-1")) == 1);
+        Assert(-1, SemanticVersion("1.0-foo").precedence(SemanticVersion("1.0")));
+        Assert(-1, SemanticVersion("1.1").precedence(SemanticVersion("2.1")));
+        Assert(1, SemanticVersion("2.1").precedence(SemanticVersion("1.1")));
+        Assert(-1, SemanticVersion("1.1.1").precedence(SemanticVersion("1.1.2")));
+        Assert(1, SemanticVersion("1.1.2").precedence(SemanticVersion("1.1.1")));
+        Assert(0, SemanticVersion("0.1").precedence(SemanticVersion("0.1")));
+        Assert(-1, SemanticVersion("0.1").precedence(SemanticVersion("0.2")));
+        Assert(1, SemanticVersion("0.2").precedence(SemanticVersion("0.1")));
+        Assert(1, SemanticVersion("0.2").precedence(SemanticVersion("0.1")));
+        Assert(1, SemanticVersion("0.1").precedence(SemanticVersion("0.1-beta")));
+        Assert(-1, SemanticVersion("0.1-alpha").precedence(SemanticVersion("0.1-beta")), SemanticVersion("0.1-alpha").to!string ~ SemanticVersion("0.1-beta").to!string);
+        Assert(0, SemanticVersion("0.1-alpha+24.12").precedence(SemanticVersion("0.1-alpha")), SemanticVersion("0.1-alpha+24.12").to!string ~ SemanticVersion("0.1-alpha").to!string);
+        Assert(1, SemanticVersion("0.1-1.2").precedence(SemanticVersion("0.1-1")), SemanticVersion("0.1-1.2").to!string ~ SemanticVersion("0.1-1").to!string);
+        Assert(1, SemanticVersion("0.1-1a").precedence(SemanticVersion("0.1-1")));
+        Assert(1, SemanticVersion("0.1-2").precedence(SemanticVersion("0.1-1")));
+        Assert(-1, SemanticVersion("0.1-1").precedence(SemanticVersion("0.1-2")));
+        Assert(-1, SemanticVersion("0.1-1").precedence(SemanticVersion("0.1-2a")));
+        Assert(1, SemanticVersion("0.1-b").precedence(SemanticVersion("0.1-a")));
+
+        bool ok;
+        parse("0.1", &ok);  
+        Assert(ok);
+
+        parse("invalid", &ok);  
+        Assert(!ok);
+
+        parse("0.1-3..4", &ok);  
+        Assert(!ok);
+
+        parse("0.1-3.4+4..4", &ok);  
+        Assert(!ok);
     }
 }

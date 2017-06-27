@@ -136,24 +136,24 @@ HTTPTestRequest!T recvTestReq(T=char)(Socket s)
 
 string httpTestOK(string msg)
 {
-	return "HTTP/1.1 200 OK\r\n"~
-        "Content-Type: text/plain\r\n"~
-        "Content-Length: "~msg.length.to!string~"\r\n"
+	return "HTTP/1.1 200 OK\r\n" ~
+        "Content-Type: text/plain\r\n" ~
+        "Content-Length: " ~ msg.length.to!string ~ "\r\n" ~
         "\r\n"~
         msg;
 }
 
 string httpTestOK()
 {
-    return "HTTP/1.1 200 OK\r\n"~
-        "Content-Length: 0\r\n"~
+    return "HTTP/1.1 200 OK\r\n" ~
+        "Content-Length: 0\r\n" ~
         "\r\n";
 }
 
 string httpTestNotFound()
 {
-    return "HTTP/1.1 404 Not Found\r\n"~
-        "Content-Length: 0\r\n"~
+    return "HTTP/1.1 404 Not Found\r\n" ~
+        "Content-Length: 0\r\n" ~
         "\r\n";
 }
 
@@ -163,6 +163,10 @@ unittest
 {
 	import deadcode.test;
 	import std.net.curl;
+
+    AssertContains(httpTestOK(), "200 OK");
+    AssertContains(httpTestNotFound(), "404 Not Found");
+
 	auto s = HTTPTestServer.start();
 	
 	// Test handler before request
@@ -178,4 +182,15 @@ unittest
 
 	Assert(!r.empty);
 	Assert(r.front == "Bar");
+
+	// Test request before handler
+	r = byChunkAsync(s.addr);
+	s.handle((Socket s) {
+		auto r = recvTestReq(s);
+		s.send(httpTestOK(""));
+	});
+
+	Assert(r.empty);
+
+    s.stop();
 }

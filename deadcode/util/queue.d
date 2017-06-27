@@ -1,8 +1,9 @@
 module deadcode.util.queue;
 
 import std.traits: hasIndirections;
-
 import core.atomic;
+
+import deadcode.test;
 
 synchronized class GrowableCircularQueue(T)
 {
@@ -103,8 +104,14 @@ unittest
         foreach (immutable j; 0 .. i)
             q.pop();
     }
-}
 
+    q = new shared GrowableCircularQueue!int(1,2,3);
+    Assert(3, q.length);
+    Assert(1, q.front);
+    Assert(1, q[0]);
+    q.clear();
+    Assert(0, q.length);
+}
 
 
 /**
@@ -115,6 +122,8 @@ shared struct RWQueue(T, size_t capacity = roundPow2!(PAGE_SIZE / T.sizeof))
 {
     static assert(capacity > 0, "Cannot have a capacity of 0.");
     static assert(roundPow2!capacity == capacity, "The capacity must be a power of 2");
+
+    alias Element = T;
 
     @property size_t length() shared const
     {
@@ -199,32 +208,53 @@ version (unittest)
     import core.thread, std.concurrency;
     enum amount = 10_000;
 
-    void push(T)(ref shared(RWQueue!T) queue)
+    void push(C)(ref C queue, int n = -1)
     {
-        foreach (i; 0 .. amount)
+        if (n == -1)
+            n = amount;
+        foreach (i; 0 .. n)
         {
             while (queue.full)
                 Thread.yield();
-            queue.push(cast(shared T)i);
+            queue.push(cast(shared C.Element)i);
         }
     }
 
-    void pop(T)(ref shared(RWQueue!T) queue)
+    void pop(C)(ref C queue, int n = -1)
     {
-        foreach (i; 0 .. amount)
+        if (n == -1)
+            n = amount;
+        foreach (i; 0 .. n)
         {
             while (queue.empty)
                 Thread.yield();
-            assert(queue.pop() == cast(shared T)i);
+            assert(queue.pop() == cast(shared C.Element)i);
         }
     }
 }
 
 unittest
 {
+    shared(RWQueue!(int, 2)) q;
+    q.pushBusyWait(1);
+    q.pushBusyWait(2);
+    auto t0 = new Thread({
+        Thread.sleep(dur!"msecs"(1)); // Sleep to let main thread busy wait on our pop
+        q.pop();
+    });
+    t0.start();
+    q.pushBusyWait(3);
+    t0.join();
+    Assert(2, q.length);
+    Assert(2, q.pop());
+    Assert(q.clear());
+}
+
+unittest
+{
     shared(RWQueue!size_t) queue;
-    auto t0 = new Thread({push(queue);}),
-        t1 = new Thread({pop(queue);});
+    auto t0 = new Thread({Thread.sleep(dur!"msecs"(1)); push(queue);}), // Sleep to let keep thread busy wait on our push
+        t1 = new Thread({pop(queue);}); 
     t0.start(); t1.start();
     t0.join(); t1.join();
 }

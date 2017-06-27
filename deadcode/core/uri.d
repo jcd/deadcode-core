@@ -82,6 +82,16 @@ class URI
 		_uri = replaceAll(_uri, com, "");
 	}
 
+    string asLocalFilePath()
+    {
+        auto idx = _uri.indexOf(':');
+        if (idx < 0 ||  // not found
+            idx == 1    // C: or Z: etc.
+            )
+            return _uri;
+        return _uri[idx+1..$];
+    }
+
 	override bool opEquals(Object other) pure const nothrow
 	{
 		URI o = cast(URI)other;

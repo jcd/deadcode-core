@@ -1,7 +1,5 @@
 module deadcode.math.smallvector;
 
-//import animation.mutator;
-
 import std.math;
 import std.traits;
 import std.string : format;
@@ -568,6 +566,7 @@ mixin(definePostfixAliases("vec4"));
 
 SmallVector!(N, T) min(size_t N, T)(const SmallVector!(N, T) a, const SmallVector!(N, T) b) pure nothrow
 {
+    static import std.algorithm;
     SmallVector!(N, T) res = void;
     for(size_t i = 0; i < N; ++i)
         res[i] = std.algorithm.min(a[i], b[i]);
@@ -596,9 +595,91 @@ T dot(size_t N, T)(const SmallVector!(N, T) a, const SmallVector!(N, T) b) pure 
 // 3D cross product
 SmallVector!(3u, T) cross(T)(const SmallVector!(3u, T) a, const SmallVector!(3u, T) b) pure nothrow
 {
-    return SmallVector!(3u, T)(a.y * b.z - b.z * a.y,
-                               a.z * b.x - b.x * a.z,
-                               a.x * b.y - b.y * a.x);
+    //return SmallVector!(3u, T)(a.y * b.z - b.z * a.y,
+    //                           a.z * b.x - b.x * a.z,
+    //                           a.x * b.y - b.y * a.x);
+    return SmallVector!(3u, T)(a.y * b.z - a.z * b.y,
+                         a.z * b.x - a.x * b.z,
+                         a.x * b.y - a.y * b.x);
+}
+
+
+/// Returns: angle between vectors.
+/// See_also: "The Right Way to Calculate Stuff" at $(WEB www.plunk.org/~hatch/rightway.php)
+T angleBetween(T, int N)(const SmallVector!(N, T) a, const SmallVector!(N, T) b) pure nothrow
+{
+    auto aN = a.normalized();
+    auto bN = b.normalized();
+    auto dp = dot(aN, bN);
+
+    if (dp < 0)
+        return PI - 2 * asin((-bN-aN).length / 2);
+    else
+        return 2 * asin((bN-aN).length / 2);
+}
+
+auto intersection(T)(const SmallVector!(2u, T) p1, const SmallVector!(2u, T) p2,
+                     const SmallVector!(2u, T) p3, const SmallVector!(2u, T) p4) pure nothrow
+{
+    struct VectorIntersection
+    {
+        double deltaA;
+        double deltaB;
+        SmallVector!(2u, T) point;
+    }
+
+    // Pa = P1 + ua * (P2 - p1)
+    // Pb = P3 + ub * (P4 - p3)
+
+    // ua = ( (p4.x - p3.x)*(p1.y - p3.y) - (p4.y - p3.y)*(p1.x - p3.x) )
+    //      /
+    //      ( (p4.y - p3.y)*(p2.x - p1.x) - (p4.x - p3.x)*(p2.y - p1.y) )
+
+    // ub = ( (p2.x - p1.x)*(p1.y - p3.y) - (p2.y - p1.y)*(p1.x - p3.x) )
+    //      /
+    //      ( (p4.y - p3.y)*(p2.x - p1.x) - (p4.x - p3.x)*(p2.y - p1.y) )
+
+    
+
+    auto ua = 
+        ( (p4.x - p3.x)*(p1.y - p3.y) - (p4.y - p3.y)*(p1.x - p3.x) )
+        /
+        ( (p4.y - p3.y)*(p2.x - p1.x) - (p4.x - p3.x)*(p2.y - p1.y) );
+
+    auto ub = 
+        ( (p2.x - p1.x)*(p1.y - p3.y) - (p2.y - p1.y)*(p1.x - p3.x) )
+        /
+        ( (p4.y - p3.y)*(p2.x - p1.x) - (p4.x - p3.x)*(p2.y - p1.y) );
+
+    auto x = p1.x + ua * (p2.x - p1.x);
+    auto y = p1.y + ua * (p2.y - p1.y);
+
+    return VectorIntersection(ua, ub, SmallVector!(2u, T)(x,y));
+}
+
+unittest
+{
+    import deadcode.test;
+
+    {
+        auto p1 = Vec2f(0,0);
+        auto p2 = Vec2f(2,0);
+        auto p3 = Vec2f(1,-1);
+        auto p4 = Vec2f(1,1);
+        auto r = intersection(p1, p2, p3, p4);
+
+        Assert(r.point, Vec2f(1,0));
+    }
+
+    {
+        auto p1 = Vec2f(0,0);
+        auto p2 = Vec2f(2,2);
+        auto p3 = Vec2f(0,2);
+        auto p4 = Vec2f(2,0);
+        auto r = intersection(p1, p2, p3, p4);
+
+        Assert(r.point, Vec2f(1,1));
+    }
 }
 
 unittest

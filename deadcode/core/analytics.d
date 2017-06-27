@@ -76,21 +76,25 @@ class GoogleAnalytics : Analytics
 	{
 		enum BASEURL = "http://www.google-analytics.com/collect";
 		Tid worker;
-		string appName;
-		string appID;
-		string appVersion;
-		string trackingID;
-		string clientID;
+		struct BaseParams
+        {
+            string appName;
+		    string appID;
+		    string appVersion;
+		    string trackingID;
+		    string clientID;
+        }
+        BaseParams _baseParams;
 		shared bool running;
 	}
 
 	this(string trackingID, string clientID, string appName, string appID, string appVersion)
 	{
-		this.clientID = clientID;
-		this.trackingID = trackingID;
-		this.appName = appName;
-		this.appID = appID;
-		this.appVersion = appVersion;
+		_baseParams.clientID = clientID;
+		_baseParams.trackingID = trackingID;
+		_baseParams.appName = appName;
+		_baseParams.appID = appID;
+		_baseParams.appVersion = appVersion;
 	}
 
 	~this()
@@ -104,7 +108,7 @@ class GoogleAnalytics : Analytics
 	void spawnWorkerThread()
 	{
 		//void data = null;
-		worker = spawn(&run);
+		worker = spawn(&run, _baseParams, &running);
 	}
 
 	// void foo() {}
@@ -144,29 +148,29 @@ class GoogleAnalytics : Analytics
 			spawnWorkerThread();
 	}
 
-	private shared void run()
+	private static void run(BaseParams baseParams, shared(bool*) running)
 	{
 		auto httpClient = HTTP();
-		running = true;
-		while(running)
+		*running = true;
+		while(*running)
 		{
 			receive( (string category, string action, string label, string value)
 					 {
-						sendEvent(httpClient, category, action, label, value);
+						sendEvent(httpClient, baseParams, category, action, label, value);
 					 },
 					 (string category, string variable, Duration d)
 					 {
-						sendTiming(httpClient, category, variable, d);
+						sendTiming(httpClient, baseParams, category, variable, d);
 					 },
 					 (string exDesc, bool exFatal)
 					 {
-						 sendException(httpClient, exDesc, exFatal);
+						 sendException(httpClient, baseParams, exDesc, exFatal);
 					 }
 					 );
 		}
 	}
 
-	private shared void addBaseParams(ref Appender!string app)
+	private static void addBaseParams(BaseParams baseParams, ref Appender!string app)
 	{
 		//auto v = "1"; // protocol version
 		//auto tid = "xxx"; // The tracking ID. The format is UA-XXXX-Y.
@@ -179,21 +183,21 @@ class GoogleAnalytics : Analytics
 		app ~= BASEURL;
 		app ~= "?v=1";
 		app ~= "&tid=";
-		app ~= trackingID;
+		app ~= baseParams.trackingID;
 		app ~= "&cid=";
-		app ~= clientID;
+		app ~= baseParams.clientID;
 		app ~= "&an=";
-		app ~= appName;
+		app ~= baseParams.appName;
 		app ~= "&av=";
-		app ~= appVersion;
+		app ~= baseParams.appVersion;
 		app ~= "&aid=";
-		app ~= appID;
+		app ~= baseParams.appID;
 	}
 
-	private shared void sendEvent(HTTP httpClient, string category, string action, string label, string value)
+	private static void sendEvent(HTTP httpClient, BaseParams baseParams, string category, string action, string label, string value)
 	{
 		auto app = appender!string;
-		addBaseParams(app);
+		addBaseParams(baseParams, app);
 		app ~= "&ec=";
 		app ~= category;
 		app ~= "&ea=";
@@ -214,10 +218,10 @@ class GoogleAnalytics : Analytics
 		auto data = get(app.data, httpClient);
 	}
 
-	private shared void sendTiming(HTTP httpClient, string category, string variable, Duration d)
+	private static void sendTiming(HTTP httpClient, BaseParams baseParams, string category, string variable, Duration d)
 	{
 		auto app = appender!string;
-		addBaseParams(app);
+		addBaseParams(baseParams, app);
 		app ~= "&t=timing";
 		app ~= "&utc=";
 		app ~= category;
@@ -228,10 +232,10 @@ class GoogleAnalytics : Analytics
 		auto data = get(app.data, httpClient);
 	}
 
-	private shared void sendException(HTTP httpClient, string exDesc, bool exFatal)
+	private static void sendException(HTTP httpClient, BaseParams baseParams, string exDesc, bool exFatal)
 	{
 		auto app = appender!string;
-		addBaseParams(app);
+		addBaseParams(baseParams, app);
 		app ~= "&t=exception";
 		app ~= "&exd=";
 		app ~= exDesc;

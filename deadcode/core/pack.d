@@ -13,7 +13,7 @@ struct FilePack(string path)
             string depacked = null;
             try
             {
-                import dccore.path;
+                import deadcode.core.path;
 
 				import std.algorithm;
                 import std.file;

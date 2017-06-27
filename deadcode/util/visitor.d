@@ -2,13 +2,13 @@ module deadcode.util.visitor;
 version (none):
 struct Persist {};
 
-import dccore.attr;
+import deadcode.core.attr;
 import std.conv;
 import std.range;
 import std.stdio;
 import std.traits;
 
-import test;
+import deadcode.test;
 mixin registerUnittests;
 
 mixin template VisitImpl(UDA)

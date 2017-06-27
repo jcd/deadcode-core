@@ -4,6 +4,8 @@ import std.json;
 import std.xml;
 import std.conv;
 
+import deadcode.test;
+
 // Based on https://github.com/sandofsky/plist-to-json/blob/master/json_to_plist.js
 JSONValue plistToJSON(string plistText)
 {
@@ -92,13 +94,8 @@ unittest
     
     auto plj = plistToJSON(pltxt);
 	auto jj = parseJSON(jsontxt);    
-	assert(toJSON(&plj, true) == toJSON(&jj, true));    
-	import std.stdio;
-    writeln(toJSON(&plj, true));	
-	
-	import std.file;
-    pltxt = readText("test1.plist");
-    plj = plistToJSON(pltxt);
-    writeln(toJSON(&plj, true));	    
+	Assert(toJSON(plj, true), toJSON(jj, true));    
+//	import std.stdio;
+//    writeln(toJSON(plj, true));	
 }
 

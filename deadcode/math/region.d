@@ -1,6 +1,5 @@
 module deadcode.math.region;
 
-//import style; // : Style;
 import alg = std.algorithm;
 import std.container;
 import std.exception;

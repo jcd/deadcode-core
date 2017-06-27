@@ -6,6 +6,7 @@ import std.string;
 import std.traits : isSomeChar, isSomeString;
 
 public import std.path : extension, baseName, CaseSensitive, defaultExtension, dirName, driveName, expandTilde, globMatch, isAbsolute, isDirSeparator, pathSplitter, setExtension, stripDrive, stripExtension;
+static import std.path;
 
 immutable(ElementEncodingType!(ElementType!Range))[] buildPath(Range)(Range segments)
 if (isInputRange!Range && isSomeString!(ElementType!Range))

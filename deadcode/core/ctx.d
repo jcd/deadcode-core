@@ -1,5 +1,7 @@
 module deadcode.core.ctx;
 
+import deadcode.test;
+
 Ctx ctx; // Singleton
 
 // Attribute to set on class to allow it to be auto created by Ctx
@@ -72,11 +74,12 @@ struct Ctx
 
 	MgrType unsubscribe(MgrType)(void delegate(MgrType oldMgr, MgrType newMgr) dg)
 	{
+        import std.algorithm;
 		auto m = typeid(MgrType) in _managers;
-		assert(m !is null, "Cannot unsubscribe to unknown manager in  Ctx");
+		//assert(m !is null, "Cannot unsubscribe to unknown manager in  Ctx");
 		if (m !is null)
 		{
-			m.subscribers = m.subscribers.remove(a => a.hasDelegate(dg.ptr, dg.funcptr));
+			m.subscribers = m.subscribers.remove!(a => a.hasDelegate(dg.ptr, dg.funcptr));
 			return cast(MgrType)m.manager;
 		}
 		return null;
@@ -148,7 +151,7 @@ struct CtxVar(MgrType, bool withSignal = true)
 
 	MgrType _cached;
 	alias cachedCtxVar this;
-	
+	private void delegate(MgrType oldMgr, MgrType newMgr) _subscribeDelegate;
 	@property MgrType cachedCtxVar() 
 	{
 		return getAndPrimeCacheIfNeeded();
@@ -158,14 +161,21 @@ struct CtxVar(MgrType, bool withSignal = true)
 	{
 		if (_cached is null)
 		{
-			_cached = ctx.subscribe((MgrType oldMgr, MgrType newMgr) {
+            _subscribeDelegate = (MgrType oldMgr, MgrType newMgr) {
 				_cached = newMgr;
 				static if (withSignal)
 					onCtxVarChanged.emit(oldMgr, newMgr);
-			});
+			};
+			_cached = ctx.subscribe(_subscribeDelegate);
 		}
 		return _cached;
 	}
+
+    void unsubscribe()
+    {
+        if (_subscribeDelegate !is null)
+            ctx.unsubscribe(_subscribeDelegate);
+    }
 }
 
 
@@ -176,22 +186,40 @@ unittest
 		int gotSignalCount = 0;
 	}
 
+    AssertIs(ctx.query!MyMgr, null);
+
 	CtxVar!MyMgr var1;
 	CtxVar!MyMgr var1b;
 	CtxVar!(MyMgr, true) var1c;
 	var1c.onCtxVarChanged.connectTo((MyMgr oldLog, MyMgr newLog) {
 		newLog.gotSignalCount++;
 	});
-	assert(var1.cachedCtxVar is null);
-	assert(var1b.cachedCtxVar is null);
-	assert(var1c.cachedCtxVar is null);
+	AssertIs(null, var1.cachedCtxVar);
+	AssertIs(null, var1b.cachedCtxVar);
+	AssertIs(null, var1c.cachedCtxVar);
 
-	ctx.set(new MyMgr());
+    auto m1 = new MyMgr();
+	ctx.set(m1);
 	
 	CtxVar!MyMgr var2;
-	assert(var2.cachedCtxVar !is null);
-	assert(var1.cachedCtxVar !is null);
-	assert(var1b.cachedCtxVar !is null);
-	assert(var1c.cachedCtxVar !is null);
-	assert(ctx.get!MyMgr().gotSignalCount == 1);
+	AssertIs(m1, var2.cachedCtxVar);
+	AssertIs(m1, var1.cachedCtxVar);
+	AssertIs(m1, var1b.cachedCtxVar);
+	AssertIs(m1, var1c.cachedCtxVar);
+	Assert(1, ctx.get!MyMgr().gotSignalCount);
+
+    var1.unsubscribe();
+    auto m2 = new MyMgr();
+	ctx.set(m2);
+
+	AssertIs(m2, var2.cachedCtxVar);
+	AssertIs(m1, var1.cachedCtxVar);
+
+
+	class MyMgr2 { }
+    ctx.set(new MyMgr2);
+    AssertIsNot(ctx.query!MyMgr2, null);
+
+	class MyMgr3 { }
+    AssertIs(null, ctx.unsubscribe((MyMgr3 a, MyMgr3 b) {  }));
 }

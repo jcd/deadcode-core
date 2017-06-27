@@ -99,6 +99,7 @@ void enforceChar(R)(ref R input, char c, bool sw) if (isInputCharRange!R) {
 void skipWhite(R)(ref R input) if (isInputCharRange!R) {
     static if(isSomeString!R) {
         /* Don't bother decoding UTF */
+        static import std.ascii;
         while(!input.empty && std.ascii.isWhite(input[0])) {
             input = input[1..$];
         }
@@ -570,7 +571,7 @@ T[] jsonDecode_impl(A : T[], T, R)(ref R input) if(isInputCharRange!R && !isSome
 }
 
 /* Decode JSON number -> D number */
-T jsonDecode_impl(T, R)(ref R input) if(isInputCharRange!R && isNumeric!T && !is(T == enum)) {
+T jsonDecode_impl(T, R)(ref R input) if(isInputCharRange!R && isNumeric!T && !is(T == enum) && !is(T == bool)) {
     /* Attempt decoding of JSON strings into D numbers
      * by ignoring surrounding quote marks if present */
     auto first = nextChar(input);

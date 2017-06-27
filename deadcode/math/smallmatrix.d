@@ -183,7 +183,7 @@ align(1) struct SmallMatrix(size_t R, size_t C, T)
             return result;
         }
 
-        ref SmallVector opOpAssign(string op, U)(U operand) pure if (isConvertible!U)
+        ref SmallVector opOpAssign(string op, U)(U operand) pure // if (isConvertible!U)
         {
             SmallVector conv = operand;
             return opOpAssign!op(conv);
@@ -352,7 +352,7 @@ align(1) struct SmallMatrix(size_t R, size_t C, T)
         // TODO glRotate equivalent
         static if (isSquare && (_R == 3 || _R == 4) && isFloatingPoint!T)
         {
-            private static SmallMatrix rotateAxis(size_t i, size_t j)(T angle)
+            static SmallMatrix rotateAxis(size_t i, size_t j)(T angle)
             {
                 SmallMatrix res = IDENTITY;
                 const T cosa = cos(angle);
@@ -434,13 +434,17 @@ align(1) struct SmallMatrix(size_t R, size_t C, T)
             static SmallMatrix lookAt(SmallVector!(3u, T) eye, SmallVector!(3u, T) target, SmallVector!(3u, T) up)
             {
                 SmallVector!(3u, T) Z = (eye - target).normalized();
-                SmallVector!(3u, T) X = cross(up, Z).normalized();
-                SmallVector!(3u, T) Y = cross(Z, X);
+                SmallVector!(3u, T) X = cross(-up, Z).normalized();
+                SmallVector!(3u, T) Y = cross(Z, -X);
 
-                return SmallMatrix(    X.x,         Y.x,         Z.x,     0,
-                                       X.y,         Y.y,         Z.y,     0,
-                                       X.z,         Y.z,         Z.z,     0,
-                                   dot(X, eye), dot(Y, eye), dot(Z, eye), 1);
+                //return SmallMatrix(    X.x,         Y.x,         Z.x,     0,
+                //                       X.y,         Y.y,         Z.y,     0,
+                //                       X.z,         Y.z,         Z.z,     0,
+                //                   dot(X, eye), dot(Y, eye), dot(Z, eye), 1);
+                return SmallMatrix(    -X.x,         -X.y,         -X.z,     dot(X, eye),
+                                       Y.x,         Y.y,         Y.z,     -dot(Y,eye),
+                                        Z.x,         Z.y,         Z.z,     -dot(Z,eye),
+                                     0f, 0f,0f, 1);
             }
         }
     }

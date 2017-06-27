@@ -18,7 +18,7 @@
 
 module deadcode.util.trackallocs;
 import std.stdio, core.memory, core.stdc.string, std.traits, std.range, std.algorithm;
-
+version(none): // Crashes unittests currently
 //stats
 __gshared ulong allocs_mc = 0; // numbers of calls for malloc, qalloc and calloc
 __gshared ulong allocs_qc = 0;

@@ -8,5 +8,14 @@
     "sourcePaths": [ "." ],
     "importPaths": [ "." ],
 	"dependencies": {
-	}
+	},
+	"configurations" : [
+		{
+			"name" : "library"
+		},
+		{
+			"name" : "unittest",
+			"versions" : [ "TestingByTool" ]
+		}
+	]	
 }

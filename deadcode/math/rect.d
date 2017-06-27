@@ -1,12 +1,10 @@
 module deadcode.math.rect;
 
-// import animation.mutator;
-
 import deadcode.math.smallvector;
 import std.math : fmin, fmax, isNaN;
 import std.string : format;
 
-import deadcode.	test;
+import deadcode.test;
 mixin registerUnittests;
 
 struct Rect(T)
@@ -275,7 +273,8 @@ struct Rect(T)
 
 	string toString() const
 	{
-		return std.string.format("Rect(%s,%s,%s,%s)", x, y, w, h);
+        import std.string;
+		return format("Rect(%s,%s,%s,%s)", x, y, w, h);
 	}
 
 	unittest
@@ -297,6 +296,7 @@ Rectf stringToRectf(string str)
 
 unittest
 {
+    static import std.math;
 	Rectf r = Rectf(1, 2, 3, 4);
 	Assert(!std.math.isNaN(r.pos.x));
 	Assert(stringToRectf("1 2 3 4.5"), Rectf(1,2,3,4.5));
@@ -304,6 +304,7 @@ unittest
 
 unittest
 {
+    static import std.math;
 	Rectf r = Rectf(1, 2, 3, 4);
 	Assert(!std.math.isNaN(r.pos.x));
 	Assert(stringToRectf("1 2 3 4.5"), Rectf(1,2,3,4.5));
@@ -315,6 +316,8 @@ struct RectOffset(T)
 	T top;
 	T right;
 	T bottom;
+
+    enum zero = RectOffset!T(0,0,0,0);
 
 	@property T horizontal()
 	{

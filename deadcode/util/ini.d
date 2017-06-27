@@ -117,7 +117,7 @@ unittest {
         # Did I mention we can indent comments, too?
         [foo[section]bar]
         subsub = 43";
-	foreach(item; parseINI(data)) {
-		writeln(text(item));
-	}
+    //foreach(item; parseINI(data)) {
+    //    writeln(text(item));
+    //}
 }
