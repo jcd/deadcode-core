@@ -78,11 +78,7 @@ private string[] toarr(R)(R e)
 {
     import std.algorithm;
     import std.array;
-    version (Windows)
-        return e.map!"a[0]".array;
-    else
-        return e.map!(a => a[0].replace("/", "\\")).array;
-
+    return e.map!"a[0]".array;
 }
 
 unittest
