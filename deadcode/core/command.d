@@ -338,6 +338,9 @@ class CommandManager : ICommandManager
 	// name -> Command
 	ICommand[string] commands;
 
+    bool delegate(ICommand) mustRunInFiberDlg;
+    bool delegate(ICommand, CommandParameter[]) canExecuteDlg;
+
 	// TODO: Rename to create(..) when dmd supports overloading on parameter that is delegates with different params. Currently this method
 	//       conflicts with the method below because of dmd issues.
 	DelegateCommand create(string name, string description, CommandParameterDefinitions paramDefs,
@@ -435,30 +438,51 @@ class CommandManager : ICommandManager
 		execute(cmd, args);
 	}
 
+    private final canExecute(ICommand cmd, CommandParameter[] args)
+    {
+        return (canExecuteDlg is null && cmd.canExecute(args)) || canExecuteDlg(cmd, args);
+    }
+
 	void execute(ICommand cmd, CommandParameter[] args)
 	{
 		// TODO: handle fibers
-		if (cmd !is null && cmd.canExecute(args))
-		{
-			import core.thread;
-			if (cmd.mustRunInFiber)
-				new Fiber( () { cmd.execute(args); } ).call();
-			else
-				cmd.execute(args);
+        if (cmd is null)
+            return;
+
+		import core.thread;
+		if (mustRunInFiber(cmd))
+        {
+			new Fiber({execute(cmd, args);}).call();
 		}
+        else
+        {
+            if (canExecute(cmd, args))
+                cmd.execute(args);
+        }
 	}
 
     void parseAndExecute(string cmdNameAndArgs)
 	{
-		auto cmdName = cmdNameAndArgs.munch("^ ");
-		cmdNameAndArgs.munch(" ");
+        auto cmdName = cmdNameAndArgs.munch("^ ");
+        cmdNameAndArgs.munch(" ");
 
         auto cmd = lookup(cmdName);
         if (cmd is null)
             return; // TODO: error handling
 
-		auto args = parseArguments(cmd, cmdNameAndArgs);
-		execute(cmd, args);
+		import core.thread;
+        if (mustRunInFiber(cmd))
+        {
+            new Fiber({
+                auto args = parseArguments(cmd, cmdNameAndArgs);
+                execute(cmd, args);
+            }).call();
+        }
+        else
+        {
+		    auto args = parseArguments(cmd, cmdNameAndArgs);
+		    execute(cmd, args);
+        }
 	}
 	
 	void parseArgumentsAndExecute(string cmdName, string argsString)
@@ -467,11 +491,21 @@ class CommandManager : ICommandManager
         if (cmd is null)
             return; // TODO: error handling
 
-        execute(cmd, parseArguments(cmd, argsString));
+		import core.thread;
+        if (mustRunInFiber(cmd))
+        {
+            new Fiber({parseArgumentsAndExecute(cmdName, argsString);}).call();
+        }
+        else
+        {
+            execute(cmd, parseArguments(cmd, argsString));
+        }
     }
 
 	CommandParameter[] parseArguments(ICommand cmd, string argsString)
     {
+        enforce(mustRunInFiber(cmd) == false);
+
         CommandParameter[] args;
         auto defs = cmd.getCommandParameterDefinitions();
         if (defs !is null)
@@ -495,13 +529,20 @@ class CommandManager : ICommandManager
 		return parseArguments(cmd, argsString);
     }
 
+    private final bool mustRunInFiber(ICommand cmd)
+    {
+		import core.thread;
+        return Fiber.getThis() is null && 
+            ( (mustRunInFiberDlg is null && cmd.mustRunInFiber) || mustRunInFiberDlg(cmd) );
+    }
+
     bool executeWithMissingArguments(ICommand cmd, ref CommandParameter[] args)
     {
 		// TODO: handle fibers
 		if (cmd !is null)
 		{
 			import core.thread;
-			if (cmd.mustRunInFiber)
+			if (mustRunInFiber(cmd))
             {
 				new Fiber( () { cmd.executeWithMissingArguments(args); } ).call(); // TODO: handle return value
             }
