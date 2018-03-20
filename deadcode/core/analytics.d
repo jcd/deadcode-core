@@ -2,7 +2,7 @@ module deadcode.core.analytics;
 
 import std.array;
 import std.conv;
-import std.datetime;
+import std.datetime.stopwatch;
 import std.net.curl;
 import std.concurrency;
 import std.stdio;

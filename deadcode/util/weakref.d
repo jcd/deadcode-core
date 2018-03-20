@@ -152,10 +152,12 @@ public:
         }
 
     /// ditto
+/*
     @trusted pure nothrow
-        final bool opEquals(const(Object) other) const {
+        final override bool opEquals(const(Object) other) const {
             return this.opEquals(cast(Object) other);
         }
+        */
 }
 
 /**

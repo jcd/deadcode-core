@@ -23,38 +23,49 @@ enum LogLevel : ubyte
 
 interface ILog
 {
-    void log(LogLevel level, string message);
+    void log(string area, LogLevel level, string message);
+
+    @property 
+    {
+        string path();
+        void path(string p);
+    }
 
     void opCall(Types...)(Types msgs)
     {
-        _log(LogLevel.info, msgs);
+        _log(null, LogLevel.info, msgs);
     }
 
     alias info = opCall;
     alias i = opCall;
 
+	void ainfo(Types...)(string area, Types msgs)
+    {
+        _log(area, LogLevel.info, msgs);
+    }
+
     void verbose(Types...)(Types msgs)
     {
-        _log(LogLevel.verbose, msgs);
+        _log(null, LogLevel.verbose, msgs);
     }
 
     alias v = verbose;
 
     void warning(Types...)(Types msgs)
     {
-        _log(LogLevel.warning, msgs);
+        _log(null, LogLevel.warning, msgs);
     }
 
     alias w = warning;
 
     void error(Types...)(Types msgs)
     {
-        _log(LogLevel.error, msgs);
+        _log(null, LogLevel.error, msgs);
     }
 
     alias e = error;
 
-    private void _log(Types...)(LogLevel level, Types msgs)
+    private void _log(Types...)(string areaName, LogLevel level, Types msgs)
     {
         import std.string;
         import std.conv;
@@ -69,7 +80,7 @@ interface ILog
         version (linux)
             std.stdio.writeln("*Messages* " ~ fmtmsg);
         
-        log(level, fmtmsg);
+        log(areaName, level, fmtmsg);
     }
 }
 
@@ -78,17 +89,44 @@ class Log : ILog
     private
     {
         File _file;
+        string _path;
     }
 
-    mixin Signal!(string, LogLevel) onVerbose;
-    mixin Signal!(string, LogLevel) onInfo;
-    mixin Signal!(string, LogLevel) onWarning;
-    mixin Signal!(string, LogLevel) onError;
-    mixin Signal!(string, LogLevel) onAllMessages;
+	// (area, level, message)
+    mixin Signal!(string, LogLevel, string) onVerbose;
+    mixin Signal!(string, LogLevel, string) onInfo;
+    mixin Signal!(string, LogLevel, string) onWarning;
+    mixin Signal!(string, LogLevel, string) onError;
+    mixin Signal!(string, LogLevel, string) onAllMessages;
+	mixin Signal!(string) onPathChanged;
 
-    this(string path)
+    @property 
     {
-        _file = File(path, "a");
+        string path()
+        {
+            return _path;
+        }
+        
+        void path(string p)
+        {
+            if (p != _path)
+            {
+				auto oldPath = _path;
+				_path = p;
+                if (_file.isOpen)
+                {
+                    _file.flush();
+                    _file.close();
+                }
+                _file = File(_path, "a");
+				onPathChanged.emit(oldPath);
+			}
+        }
+    }
+
+    this(string path_)
+    {
+        path = path_;
     }
 
     this()
@@ -100,7 +138,7 @@ class Log : ILog
         return _file;
     }
 
-    void log(LogLevel level, string message)
+    void log(string areaName, LogLevel level, string message)
     {
         if (_file.isOpen)
         {
@@ -111,18 +149,18 @@ class Log : ILog
         final switch (level) with (LogLevel)
         {
             case verbose:
-                onVerbose.emit(message, verbose);
+                onVerbose.emit(areaName, verbose, message);
                 break;
             case info:
-                onInfo.emit(message, verbose);
+                onInfo.emit(areaName, info, message);
                 break;
             case warning:
-                onWarning.emit(message, warning);
+                onWarning.emit(areaName, warning, message);
                 break;
             case error:
-                onError.emit(message, error);
+                onError.emit(areaName, error, message);
                 break;
         }
-        onAllMessages.emit(message, level);
+        onAllMessages.emit(areaName, level, message);
 	}
 }

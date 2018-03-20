@@ -6,7 +6,6 @@ import std.variant;
 
 import deadcode.core.event;
 import deadcode.core.coreevents;
-import deadcode.test;
 
 alias EventOutputRange = MainEventSource.OutputRange;
 
@@ -688,7 +687,6 @@ unittest
 	auto fes = new Fixture.ES();
 	auto e = new Ev2;
 	Assert(!fes.empty);
-	import std.variant;
 	import core.time;
 
 	auto timeoutEv = fes.scheduleTimeout(dur!"msecs"(100), Variant(42));

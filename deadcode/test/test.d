@@ -43,21 +43,36 @@ static
 UnitTestInfo parseUnitTestName(string func)
 {
 	// Parse func line e.g.
-	// math.region.Region.__unittestL60_63
-	string[] f;
 	string agName = "";
-	if (func[0..2] != "__")
-		agName = func[0..func.indexOf(".__")];
-	const int DELIMLEN = 11; // __unittestL
-	int offsBegin = cast(int)agName.length + DELIMLEN + (agName.length ? 1 : 0);
-	int offsEnd = cast(int)func.indexOf("_", offsBegin);
-	int agAtLine = func[offsBegin..offsEnd].to!int;
+	int agAtLine = 0;
+	int testNumber = 0;
+	if (false)
+	{
+		// Old style:
+		// math.region.Region.__unittestL60_63
+		string[] f;
+		if (func[0..2] != "__")
+			agName = func[0..func.indexOf(".__")];
+		const int DELIMLEN = 11; // __unittestL
+		int offsBegin = cast(int)agName.length + DELIMLEN + (agName.length ? 1 : 0);
+		int offsEnd = cast(int)func.indexOf("_", offsBegin);
+		agAtLine = func[offsBegin..offsEnd].to!int;
 
-	// In case of Asserts in member functions of classes defined in a unittest scope
-	// we need to check of . after the __unittestLxx_xx
-	int offsStop = cast(int)func.indexOf(".", offsEnd);
+		// In case of Asserts in member functions of classes defined in a unittest scope
+		// we need to check of . after the __unittestLxx_xx
+		int offsStop = cast(int)func.indexOf(".", offsEnd);
 
-	int testNumber = func[offsEnd+1.. offsStop == -1 ? func.length : offsStop].to!int;
+		testNumber = func[offsEnd+1.. offsStop == -1 ? func.length : offsStop].to!int;		
+	}
+	else
+	{
+		// New style
+		// __unittest_mat_region_Region_d_60_63
+		import std.stdio;
+		writeln(func);
+		const int DELIMLEN = 11; // __unittest_
+		agName = func[11..func.indexOf("_d_")].replace("_",".");
+	}
 	return UnitTestInfo(func, agName, testNumber, agAtLine);
 }
 

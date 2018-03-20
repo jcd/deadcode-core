@@ -58,6 +58,14 @@ class PromiseTmpl(T, bool Progress = false)
         }
     }
 
+	static if (is(T == VoidState))
+	{
+		void setDone()
+		{
+			setValue(VoidState());
+		}
+	}
+
     void setValue(T r)
 	{
 		synchronized (_state)
@@ -102,6 +110,7 @@ interface IFuture
 
 class FutureTmpl(T, bool Progress = false) : IFuture
 {
+	alias ResultType = T;
 	private SharedState!(T,Progress) _state;
 
     // alias this = get;

@@ -49,3 +49,46 @@ auto rootName(R)(R path)
 	else
 		return std.path.rootName(path);
 }
+
+
+auto completePath(string path)
+{
+	import std.algorithm;
+	import std.array;
+	import std.file;
+	import std.string;
+	import std.typecons;
+	import deadcode.util.string;
+
+	string relDirPath = path;
+	string filenamePrefix;
+	if (!path.empty)
+	{
+		auto ch = path[$-1];
+		if (!isDirSeparator(ch))
+		{
+			relDirPath = dirName(path);
+			filenamePrefix = baseName(path);
+		}
+
+		if (relDirPath == ".")
+			relDirPath = "";
+	}
+
+	//auto dirPath = dirName(absolutePath(path));
+	//  auto filenamePrefix = baseName(path);
+
+	debug {
+		static import std.stdio;
+		version (linux)
+			std.stdio.writeln(path, " ", relDirPath, " : ", filenamePrefix, " ", dirEntries(relDirPath, SpanMode.shallow));
+	}
+
+	auto r1 = dirEntries(relDirPath, SpanMode.shallow)
+		.map!(a => tuple(filenamePrefix.empty ? 1.0 : baseName(a).rank(filenamePrefix), a.isDir ? tr(a.name, r"\", "/") ~ '/' : tr(a.name, r"\", "/")))
+		.filter!(a => a[0] > 0.0)
+		.array;
+	auto r2 = r1
+		.sort!((a,b) => a[0] > b[0]);
+	return r2;
+}

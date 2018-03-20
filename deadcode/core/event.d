@@ -4,7 +4,7 @@ import core.time : MonoTime, Duration, dur;
 import std.typecons : Tuple, AliasSeq;
 import std.variant;
 
-import deadcode.test;
+import deadcode.util.string : munch;
 
 alias EventType = ushort;
 
@@ -21,7 +21,7 @@ class Event
 	MonoTime timestamp;
     bool used = false;
 	void function(Event) disposeFunc;
-	debug string name; 
+	debug string debugName; 
 
 	final void dispose()
 	{
@@ -124,6 +124,7 @@ string identifierToFieldName(string cname)
 
 unittest
 {
+	import deadcode.test;
 	Assert("", identifierToFieldName(""));
 	Assert("a", identifierToFieldName("A"));
 	Assert("a", identifierToFieldName("a"));
@@ -150,6 +151,7 @@ string identifierToEventFieldName(string cname)
 
 unittest
 {
+	import deadcode.test;
 	Assert("", identifierToEventFieldName(""));
 	Assert("event", identifierToEventFieldName("Event"));
 	Assert("foo", identifierToEventFieldName("FooEvent"));
@@ -215,7 +217,7 @@ mixin template registerEvents(string system, string modStr = __MODULE__)
   {
       void[] data = _allocator.allocate(typeid(T).initializer().length);
       auto e = emplace!(T)(data, args);
-      debug e.name = T.stringof;
+      debug e.debugName = T.stringof;
       e.type = mixin(identifierToEventFieldName(T.stringof));
       e.disposeFunc = &dispose;
       return e;
