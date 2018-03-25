@@ -1,7 +1,8 @@
 module deadcode.core.eventsource;
 
 import core.time : MonoTime, Duration, dur;
-import std.typecons : Tuple, AliasSeq;
+import std.meta : AliasSeq;
+import std.typecons : Tuple;
 import std.variant;
 
 import deadcode.core.event;

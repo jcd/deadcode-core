@@ -1,8 +1,8 @@
 module deadcode.core.event;
 
 import core.time : MonoTime, Duration, dur;
-import std.typecons : Tuple, AliasSeq;
-import std.variant;
+import std.meta : AliasSeq;
+import std.typecons : Tuple;
 
 import deadcode.util.string : munch;
 

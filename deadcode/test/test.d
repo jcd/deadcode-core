@@ -69,9 +69,11 @@ UnitTestInfo parseUnitTestName(string func)
 		// New style
 		// __unittest_mat_region_Region_d_60_63
 		import std.stdio;
-		writeln(func);
+		//writeln(func);
 		const int DELIMLEN = 11; // __unittest_
-		agName = func[11..func.indexOf("_d_")].replace("_",".");
+		auto idx = func.indexOf("_d_");
+		if (idx != -1)
+			agName = func[11..idx].replace("_",".");
 	}
 	return UnitTestInfo(func, agName, testNumber, agAtLine);
 }
@@ -131,9 +133,12 @@ TestRecord getTestResult(string filename, int unittestStartLine)
 
 unittest
 {
-    auto r = g_TestRecords[0];
-    Assert(TestRecord(), getTestResult("<non-existing-file>", -1));
-    Assert(r, getTestResult(r.file, r.testInfo.testScopeStartsAtLine));
+	if (g_TestRecords.length != 0)
+	{
+	    auto r = g_TestRecords[0];
+	    Assert(TestRecord(), getTestResult("<non-existing-file>", -1));
+	    Assert(r, getTestResult(r.file, r.testInfo.testScopeStartsAtLine));		
+	}
 }
 
 bool printStats(F)(F output, bool includeSuccessful = false)
