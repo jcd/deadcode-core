@@ -186,8 +186,8 @@ struct SemanticVersion
     {
         import std.conv;
         import unit_threaded;
-        SemanticVersion("1.0-foo").precedence(SemanticVersion("1.0")).shouldEqual(0);
-        SemanticVersion("1.1").precedence(SemanticVersion("2.1")).shouldNotEqual(-1);
+        SemanticVersion("1.0-foo").precedence(SemanticVersion("1.0")).shouldEqual(-1);
+        SemanticVersion("1.1").precedence(SemanticVersion("2.1")).shouldEqual(-1);
 
 /*
         Assert(-1, SemanticVersion("1.0-foo").precedence(SemanticVersion("1.0")));

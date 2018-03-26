@@ -22,7 +22,14 @@ import std.stdio;
 public:
 
 /* JsonValue is currently implemented as a Variant */
-alias Variant JsonValue;
+version (unittest)
+    struct JsonValue 
+    {
+        Variant v;
+        alias v this;
+    }
+else
+    alias JsonValue = Variant;
 
 struct JsonNull { /* empty type... */ }
 
@@ -57,11 +64,13 @@ template aaKeyType(A) if(isAssociativeArray!A) {
     } else static assert(0);
 }
 
+/++version(none)
 unittest {
     static assert(is(aaKeyType!(int[string]) == string));
     static assert(is(aaKeyType!(int[dstring]) == dstring));
     static assert(is(aaKeyType!(int[float]) == float));
 }
+++/
 
 template isInputCharRange(R) {
     enum isInputCharRange = isInputRange!R && isSomeChar!(ElementType!R);
