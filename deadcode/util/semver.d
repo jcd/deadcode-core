@@ -181,6 +181,7 @@ struct SemanticVersion
     }
 
     ///
+    version (unittest)
     @("Testing SemanticVersion")
     unittest
     {
