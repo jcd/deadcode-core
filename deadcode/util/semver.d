@@ -1,7 +1,10 @@
 module deadcode.util.semver;
 
-import deadcode.test;
-mixin registerUnittests;
+version(DeadcodeCoreTest)
+{
+    import deadcode.test;
+    mixin registerUnittests;    
+}
 
 struct SemanticVersion
 {
@@ -181,7 +184,7 @@ struct SemanticVersion
     }
 
     ///
-    version (unittest)
+    version(DeadcodeCoreTest)
     @("Testing SemanticVersion")
     unittest
     {
