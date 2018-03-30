@@ -1,10 +1,7 @@
 module deadcode.util.semver;
 
-version(DeadcodeCoreTest)
-{
-    import deadcode.test;
-    mixin registerUnittests;    
-}
+import deadcode.test;
+mixin registerUnittests;    
 
 struct SemanticVersion
 {
