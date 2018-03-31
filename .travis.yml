@@ -6,3 +6,5 @@ script:
  - dub test -b unittest-cov --compiler=${DC}
 after_success:
  - bash <(curl -s https://codecov.io/bash)
+ - git clone https://github.com/jcd/deadcode-dev-ci.git citools
+ - perl citools/on-success.pl animation command edit graphics platform rpc
