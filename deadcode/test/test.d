@@ -98,7 +98,7 @@ void recordTestResult(bool success, string assertion, string msg, string file, i
 
 version (TestingByTool)
 {
-	import std.datetime;
+	import std.datetime.stopwatch;
 	StopWatch sw;
     
     shared static this()
