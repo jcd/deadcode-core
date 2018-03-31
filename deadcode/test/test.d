@@ -96,7 +96,7 @@ void recordTestResult(bool success, string assertion, string msg, string file, i
     }
 }
 
-version (TestingByTool)
+version (DeadcodeCoreTest)
 {
 	import std.datetime.stopwatch;
 	StopWatch sw;
@@ -115,7 +115,7 @@ version (TestingByTool)
     {
 		sw.stop();
 		printStats(sink,  true);
-		sink.writeln("Time: " ~ sw.peek().to!("seconds", real).to!string ~ " seconds.");        
+		sink.writeln("Time: " ~ sw.peek().total!"seconds".to!string ~ " seconds.");        
     }
 }
 
