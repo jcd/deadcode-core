@@ -131,6 +131,7 @@ TestRecord getTestResult(string filename, int unittestStartLine)
 	return TestRecord();
 }
 
+version (DeadcodeCoreTest)
 unittest
 {
 	if (g_TestRecords.length != 0)
@@ -174,6 +175,7 @@ bool printStats(F)(F output, bool includeSuccessful = false)
     return c == g_Total;
 }
 
+version (DeadcodeCoreTest)
 unittest
 {
     struct MockSink
@@ -412,6 +414,7 @@ void AssertRangesEqual(T, V)(lazy T thisExp, lazy V isEqualToThisExp, string msg
 	recordTestResult(testMsg is null, testMsg ~ app1.data, msg ~ " " ~ func, file, line, func);
 }
 
+version (DeadcodeCoreTest)
 unittest
 {
     struct MyInputRange

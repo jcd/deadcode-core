@@ -22,7 +22,7 @@ import std.stdio;
 public:
 
 /* JsonValue is currently implemented as a Variant */
-version (unittest)
+version (DeadcodeCoreTest)
     struct JsonValue 
     {
         Variant v;
