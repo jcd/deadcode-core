@@ -2,6 +2,10 @@ language: d
 d:
  - dmd
  - ldc
+addons:
+ apt:
+  sources:
+  - libwww-perl
 script:
  - git clone https://github.com/jcd/deadcode-dev-ci.git citools
  - perl citools/clone-dub-deps.pl
