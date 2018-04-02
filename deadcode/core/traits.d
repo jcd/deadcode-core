@@ -15,6 +15,8 @@ import deadcode.core.attr : isAnyPublic;
 //    }
 //}
 
+alias Identity(alias A) = A;
+
 template isAccessible2(alias Mod)
 {
     template isAccessible2(string symName)
