@@ -45,30 +45,6 @@ class Stack(T)
 		return false;
 	}
 
-	unittest
-	{
-		Stack!int s = new Stack!int;
-		s.push(1);
-		s.push(2);
-		s.push(3);
-		s.remove(2);
-        auto l1 = s.size;
-        s.remove(32);
-        Assert(l1, s.size, "Removing non-existing element doens't change stack size");
-		Assert(3, s.top);
-        Assert(3, s.pop());
-		Assert(1, s.pop());
-
-        s.push(2);
-		s.push(3);
-        s.push(2);
-        s.push(2);
-		s.push(3);
-        auto l2 = s.size;
-        s.removeAll(2);
-        Assert(l2 - 3, s.size, "Removing all 2's changes stack size as expected");
-	}
-
 	// Locate item in stack and remove it from stack even if there multiple times
 	bool removeAll(T item)
 	{
@@ -86,6 +62,32 @@ class Stack(T)
 	}
 }
 
+version (DeadcodeCoreTest)
+unittest
+{
+	Stack!int s = new Stack!int;
+	s.push(1);
+	s.push(2);
+	s.push(3);
+	s.remove(2);
+    auto l1 = s.size;
+    s.remove(32);
+    Assert(l1, s.size, "Removing non-existing element doens't change stack size");
+	Assert(3, s.top);
+    Assert(3, s.pop());
+	Assert(1, s.pop());
+
+    s.push(2);
+	s.push(3);
+    s.push(2);
+    s.push(2);
+	s.push(3);
+    auto l2 = s.size;
+    s.removeAll(2);
+    Assert(l2 - 3, s.size, "Removing all 2's changes stack size as expected");
+}
+
+version (DeadcodeCoreTest)
 unittest
 {
 	Stack!int s = new Stack!int;
@@ -232,6 +234,7 @@ class Queue(T)
 	}
 }
 
+version (DeadcodeCoreTest)
 version (unittest)
 {
 	import std.stdio;
@@ -257,6 +260,7 @@ version (unittest)
 
 struct T { string n; }
 
+version (DeadcodeCoreTest)
 unittest
 {
 	Queue!int s = new Queue!int(0);
@@ -272,6 +276,7 @@ unittest
     Assert(cap, s._queue.capacity, "Queue.enqueueIfRoom after queue buffer wrap will not change capacity");
 }
 
+version (DeadcodeCoreTest)
 @T("queue and dequeue until empty")
 unittest
 {
@@ -287,6 +292,7 @@ unittest
 	Assert(equal(s, [1][0..0]));
 }
 
+version (DeadcodeCoreTest)
 @T("will resize when exceeding buffer length")
 unittest
 {
@@ -302,6 +308,7 @@ unittest
 	Assert(equal(s, [1,2,3]));
 }
 
+version (DeadcodeCoreTest)
 @T("head will wrap")
 unittest
 {
@@ -317,6 +324,7 @@ unittest
 	Assert(equal(s, [2,3]));
 }
 
+version (DeadcodeCoreTest)
 @T("will resize when exceeding buffer size in the middle")
 unittest
 {
@@ -333,6 +341,7 @@ unittest
 	Assert(equal(s, [2,3,4]));
 }
 
+version (DeadcodeCoreTest)
 @T("tail will wrap")
 unittest
 {

@@ -6,12 +6,15 @@ import deadcode.core.event;
 
 class TimeoutEvent : Event
 {
+	// coverage-off
 	/*package*/ this() {}
     this(bool _aborted, Variant data = Variant.init)
 	{
 		aborted = _aborted;
 		userData = data;
 	}
+	// coverage-on
+
 	bool aborted = false;
 	Variant userData;
 }

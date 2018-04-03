@@ -52,6 +52,17 @@ class Analytics
 	}
 }
 
+version(DeadcodeCoreTest)
+unittest 
+{
+	auto a = new Analytics();
+	a.startTiming("category", "variable");
+	a.stopTiming("category", "variable");
+	a.addEvent("category", "action");
+	a.addTiming("category", "variable", dur!"seconds"(1));
+	a.addException("category", false);
+}
+
 //class NullAnalytics : Analytics
 //{
 //    void addEvent(string category, string action, string label = null, string value = null)
@@ -74,7 +85,11 @@ class GoogleAnalytics : Analytics
 {
 	private
 	{
-		enum BASEURL = "http://www.google-analytics.com/collect";
+		version (DeadcodeCoreTest)
+			enum BASEURL = "http://localhost:1000";
+		else
+			enum BASEURL = "http://www.google-analytics.com/collect";
+
 		Tid worker;
 		struct BaseParams
         {
@@ -99,15 +114,18 @@ class GoogleAnalytics : Analytics
 
 	~this()
 	{
+		// coverage-off
 		if (!running)
 			return;
 		running = false;
 		worker.send("");
+		// coverage-on
 	}
 
 	void spawnWorkerThread()
 	{
 		//void data = null;
+		running = true;
 		worker = spawn(&run, _baseParams, &running);
 	}
 
@@ -154,19 +172,26 @@ class GoogleAnalytics : Analytics
 		*running = true;
 		while(*running)
 		{
-			receive( (string category, string action, string label, string value)
-					 {
-						sendEvent(httpClient, baseParams, category, action, label, value);
-					 },
-					 (string category, string variable, Duration d)
-					 {
-						sendTiming(httpClient, baseParams, category, variable, d);
-					 },
-					 (string exDesc, bool exFatal)
-					 {
-						 sendException(httpClient, baseParams, exDesc, exFatal);
-					 }
-					 );
+			try
+			{
+				receive( (string category, string action, string label, string value)
+						 {
+							sendEvent(httpClient, baseParams, category, action, label, value);
+						 },
+						 (string category, string variable, Duration d)
+						 {
+							sendTiming(httpClient, baseParams, category, variable, d);
+						 },
+						 (string exDesc, bool exFatal)
+						 {
+							 sendException(httpClient, baseParams, exDesc, exFatal);
+						 }
+						 );				
+			}
+			catch(OwnerTerminated e)
+			{
+				return;
+			}
 		}
 	}
 
@@ -215,7 +240,7 @@ class GoogleAnalytics : Analytics
 			app ~= value;
 		}
 
-		auto data = get(app.data, httpClient);
+		get(httpClient, app.data);
 	}
 
 	private static void sendTiming(HTTP httpClient, BaseParams baseParams, string category, string variable, Duration d)
@@ -229,7 +254,7 @@ class GoogleAnalytics : Analytics
 		app ~= variable;
 		app ~= "&utt=";
 		app ~= d.total!"msecs"().to!string();
-		auto data = get(app.data, httpClient);
+		get(httpClient, app.data);
 	}
 
 	private static void sendException(HTTP httpClient, BaseParams baseParams, string exDesc, bool exFatal)
@@ -241,7 +266,43 @@ class GoogleAnalytics : Analytics
 		app ~= exDesc;
 		app ~= "&exf=";
 		app ~= exFatal ? "1" : "0";
-		auto data = get(app.data, httpClient);
+		get(httpClient, app.data);
 	}
 
+	private static void get(HTTP httpClient, string msg)
+	{
+		static import std.net.curl;
+
+		version (DeadcodeCoreTest)
+		{
+			try
+			{
+				auto data = std.net.curl.get(msg, httpClient);			
+			}
+			catch (Exception)
+			{
+				// ignore
+			}
+
+		}
+		else
+		{
+			auto data = std.net.curl.get(msg, httpClient);			
+		}
+	}
+
+}
+
+version(DeadcodeCoreTest)
+unittest 
+{
+	auto a = new GoogleAnalytics("trackingID", "clientID", "appName", "appID", "appVersion");
+	a.ensureRunning();
+	a.stopTiming("category", "variable");
+	a.startTiming("category", "variable");
+	a.stopTiming("category", "variable");
+	a.addEvent("category", "action", "label", "value");
+	a.addTiming("category", "variable", dur!"seconds"(1));
+	a.addException("category", false);
+	a.stop();
 }

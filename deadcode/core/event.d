@@ -47,6 +47,7 @@ class Event
 	// just use this event and dispose the argument event.
 	bool combineIntoThis(Event e)
 	{
+		// next-line-coverage-off
 		assert(0); // only allowed allowCombine has returned true and subclass has overridden this method
 	}
 }
@@ -159,9 +160,12 @@ unittest
 
 mixin template registerEvents(string system, string modStr = __MODULE__)
 {
-	import std.traits;
-	// pragma (msg, "registerEvents " ~ modStr);
 	alias mod = I!(mixin(modStr));
+	mixin registerEvents!(system, mod);
+}
+
+mixin template registerEvents(string system, alias mod)
+{
 	import std.meta;
 	import std.string;
 	import std.traits;
@@ -401,3 +405,27 @@ class EventManager
     // private static IEventRegistrant[] _eventRegistrants;
 }
 
+version (DeadcodeCoreTest)
+{
+	class TestEvent : Event
+	{
+	}
+	
+	mixin registerEvents!("Unittest", deadcode.core.event);
+
+	unittest
+	{
+		import deadcode.test;
+		Assert(EventManager.lookup("Builtin") != Event.invalidType);
+		Assert(EventManager.lookup("NonExisting"), Event.invalidType);
+		Assert(EventManager.eventDescriptions.length, 1);
+
+		TestEvent te = UnittestEvents.create!TestEvent();
+		AssertIsNot(null, te);
+		Assert(false, te.used);
+		te.markUsed();
+		Assert(true, te.used);
+		Assert(true, te.isValid);
+		Assert(false, te.allowCombine);
+	}
+}

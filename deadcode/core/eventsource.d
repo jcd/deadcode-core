@@ -443,6 +443,7 @@ private:
 	}
 }
 
+version (DeadcodeCoreTest)
 version (unittest)
 {
 	import deadcode.test;
@@ -571,144 +572,154 @@ version (unittest)
 //    mgr = new EventManager();
 //    mgr.activateRegistrantBySystemName("Core");
 //}
-
-}
-version(none):
-// Empty source works
-unittest
-{
-	auto fes = new Fixture.ES();
-	fes.stop();
-	Assert(fes.empty);
+	mixin registerEvents!"Unittest2";
 }
 
-// Timeout source works
-unittest
+version (none)
 {
-	auto fes = new Fixture.ES();
-	fes.timeout = 0.0;
-	Assert(!fes.empty);
-	auto e = fes.front;
-	Assert(cast(TimeoutEvent)e !is null);
-	fes.stop();
-}
-
-// Local put works
-unittest
-{
-	auto fes = new Fixture.ES();
-	auto e = new Ev1a;
-	fes.put(e);
-	Assert(!fes.empty);
-	AssertRangesEqual(only(e), fes.take(1).array);
-	fes.stop();
-}
-
-// Main thread put works with poll
-unittest
-{
-	auto fes = new Fixture.ES();
-	auto e = new Ev1b;
-	Assert(!fes.empty);
-	fes.fakeMainEvent(e);
-	auto arr = fes.take(1).array;
-	fes.stop();
-	AssertRangesEqual(only(e), arr);
-	Assert((cast(EvBase)arr[0]).source == 1);
-}
-
-// Main thread put works with poll multi
-unittest
-{
-	auto fes = new Fixture.ES();
-	auto e = new Ev1b;
-	Assert(!fes.empty);
-	fes.fakeMainEvent(e);
-	fes.fakeMainEvent(e);
-	fes.fakeMainEvent(e);
-	auto arr = fes.take(3).array;
-	fes.stop();
-	AssertRangesEqual(only(e,e,e), arr);
-	Assert((cast(EvBase)arr[0]).source == 1);
-}
-
-// Other thread put works with poll
-unittest
-{
-	auto fes = new Fixture.ES();
-	auto e = new Ev2;
-	assert(!fes.empty);
-	fes.fakeOtherEvent(e);
-	auto arr = fes.take(1).array;
-	fes.stop();
-	AssertRangesEqual(only(e), arr);
-	Assert((cast(EvBase)arr[0]).source == 2);
-}
-
-// Other thread put works with poll multi
-unittest
-{
-	auto fes = new Fixture.ES();
-	auto e = new Ev2;
-	Assert(!fes.empty);
-	fes.fakeOtherEvent(e);
-	fes.fakeOtherEvent(e);
-	fes.fakeOtherEvent(e);
-	auto arr = fes.take(3).array;
-	fes.stop();
-	AssertRangesEqual(only(e,e,e), arr);
-	Assert((cast(EvBase)arr[0]).source == 2);
-}
-
-// Mixed thread put works with poll multi
-unittest
-{
-	import std.algorithm;
-	auto fes = new Fixture.ES();
-	auto e1a = new Ev1a;
-	auto e1b = new Ev1b;
-	auto e2 = new Ev2;
-	Assert(!fes.empty);
-	fes.fakeOtherEvent(e2);
-	fes.fakeMainEvent(e1b);
-	fes.fakeOtherEvent(e2);
-	fes.put(e1a);
-	fes.fakeMainEvent(e1b);
-	fes.fakeOtherEvent(e2);
-	auto arr = fes.take(6).array.sort!("a.toHash() < b.toHash()");
-	fes.stop();
-
-	// First all put events, then all main thread events, then other thread events
-	AssertRangesEqual(only(e1a,e1b,e1b,e2,e2,e2).array.sort!("a.toHash() < b.toHash()") , arr);
-}
-
-// Timeout work
-unittest
-{
-	auto fes = new Fixture.ES();
-	auto e = new Ev2;
-	Assert(!fes.empty);
-	import core.time;
-
-	auto timeoutEv = fes.scheduleTimeout(dur!"msecs"(100), Variant(42));
-	auto arr = fes.take(1).array;
-	fes.stop();
-	Assert( (cast(TimeoutEvent)timeoutEv).userData.get!int, 42, "scheduleTimeout");
-	//AssertRangesEqual(only(cast(TimeoutEvent)timeoutEv), arr);
-}
-
-unittest
-{
-	import std.algorithm;
-	static bool cmp(EventDescription a, EventDescription b)
+	// Empty source works
+	unittest
 	{
-		return a.system < b.system || ( a.system == b.system && a.name < b.name); 
+		auto fes = new Fixture.ES();
+		fes.stop();
+		Assert(fes.empty);
 	}
 
-	auto expectedNames = ["Ev1a", "Ev1b", "Ev2", "QuitEvent", "TimeoutEvent"]; 
+	// Timeout source works
+	unittest
+	{
+		auto fes = new Fixture.ES();
+		fes.timeout = 0.0;
+		Assert(!fes.empty);
+		auto e = fes.front;
+		Assert(cast(TimeoutEvent)e !is null);
+		fes.stop();
+	}
 
-	AssertRangesEqual(expectedNames, 
-				EventManager.eventDescriptions.dup.remove!(a => a.name == "Invalid").sort!cmp.array.map!(a=>a.name));
+	// Local put works
+	unittest
+	{
+		auto fes = new Fixture.ES();
+		auto e = new Ev1a;
+		fes.put(e);
+		Assert(!fes.empty);
+		AssertRangesEqual(only(e), fes.take(1).array);
+		fes.stop();
+	}
 
-	Assert(CoreEvents.ev2, EventManager.lookup("Ev2")); 
-}	
+	// Main thread put works with poll
+	unittest
+	{
+		auto fes = new Fixture.ES();
+		auto e = new Ev1b;
+		Assert(!fes.empty);
+		fes.fakeMainEvent(e);
+		auto arr = fes.take(1).array;
+		fes.stop();
+		AssertRangesEqual(only(e), arr);
+		Assert((cast(EvBase)arr[0]).source == 1);
+	}
+
+	// Main thread put works with poll multi
+	unittest
+	{
+		auto fes = new Fixture.ES();
+		auto e = new Ev1b;
+		Assert(!fes.empty);
+		fes.fakeMainEvent(e);
+		fes.fakeMainEvent(e);
+		fes.fakeMainEvent(e);
+		auto arr = fes.take(3).array;
+		fes.stop();
+		AssertRangesEqual(only(e,e,e), arr);
+		Assert((cast(EvBase)arr[0]).source == 1);
+	}
+
+	// Other thread put works with poll
+	unittest
+	{
+		auto fes = new Fixture.ES();
+		auto e = new Ev2;
+		assert(!fes.empty);
+		fes.fakeOtherEvent(e);
+		auto arr = fes.take(1).array;
+		fes.stop();
+		AssertRangesEqual(only(e), arr);
+		Assert((cast(EvBase)arr[0]).source == 2);
+	}
+
+	// Other thread put works with poll multi
+	unittest
+	{
+		auto fes = new Fixture.ES();
+		auto e = new Ev2;
+		Assert(!fes.empty);
+		fes.fakeOtherEvent(e);
+		fes.fakeOtherEvent(e);
+		fes.fakeOtherEvent(e);
+		auto arr = fes.take(3).array;
+		fes.stop();
+		AssertRangesEqual(only(e,e,e), arr);
+		Assert((cast(EvBase)arr[0]).source == 2);
+	}
+
+	// Mixed thread put works with poll multi
+	unittest
+	{
+		import std.algorithm;
+		auto fes = new Fixture.ES();
+		auto e1a = new Ev1a;
+		auto e1b = new Ev1b;
+		auto e2 = new Ev2;
+		Assert(!fes.empty);
+		fes.fakeOtherEvent(e2);
+		fes.fakeMainEvent(e1b);
+		fes.fakeOtherEvent(e2);
+		fes.put(e1a);
+		fes.fakeMainEvent(e1b);
+		fes.fakeOtherEvent(e2);
+		auto arr = fes.take(6).array.sort!("a.toHash() < b.toHash()");
+		fes.stop();
+
+		// First all put events, then all main thread events, then other thread events
+		AssertRangesEqual(only(e1a,e1b,e1b,e2,e2,e2).array.sort!("a.toHash() < b.toHash()") , arr);
+	}
+
+	// Timeout work
+	unittest
+	{
+		auto fes = new Fixture.ES();
+		auto e = new Ev2;
+		Assert(!fes.empty);
+		import core.time;
+
+		auto timeoutEv = fes.scheduleTimeout(dur!"msecs"(100), Variant(42));
+		auto arr = fes.take(1).array;
+		fes.stop();
+		Assert( (cast(TimeoutEvent)timeoutEv).userData.get!int, 42, "scheduleTimeout");
+		//AssertRangesEqual(only(cast(TimeoutEvent)timeoutEv), arr);
+	}
+
+	unittest
+	{
+		import std.algorithm;
+		static bool cmp(const(EventDescription) a, const(EventDescription) b)
+		{
+			return a.system < b.system || ( a.system == b.system && a.name < b.name); 
+		}
+
+		auto expectedNames = ["Ev1a", "Ev1b", "Ev2", "QuitEvent", "TimeoutEvent"]; 
+
+		EventDescription[] ed = EventManager.eventDescriptions
+									.dup
+									.remove!(a => a.name == "Invalid");
+
+		//AssertRangesEqual(expectedNames, 
+		//				ed
+		//				.sort!cmp
+		//				.array
+		//				.map!(a=>a.name));
+
+		Assert(Unittest2Events.ev2, EventManager.lookup("Ev2")); 
+	}	
+}
